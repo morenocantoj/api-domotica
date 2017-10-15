@@ -30,6 +30,14 @@ function initDatabase() {
         db.run(programacion_table);
     });
 
+    // Borrado de datos antes de insertado
+    db.run(`DELETE FROM usuario WHERE id > 0`);
+    db.run(`DELETE FROM sqlite_sequence WHERE name = 'usuario'`);
+    db.run(`DELETE FROM casa WHERE id > 0`);
+    db.run(`DELETE FROM sqlite_sequence WHERE name = 'casa'`);
+    db.run(`DELETE FROM controlador WHERE id > 0`);
+    db.run(`DELETE FROM sqlite_sequence WHERE name = 'controlador'`);
+
     // Insertado de datos
     db.run(`INSERT INTO usuario(login, password) VALUES(?, ?)`, ['morenocantoj', 'elfaryvive'], function(err) {
         if (err) {
@@ -66,6 +74,7 @@ function initDatabase() {
             console.log('Error: ' + err.message);
         }
     });
+    
 }
 
 var router = express.Router(); // Enrutador
