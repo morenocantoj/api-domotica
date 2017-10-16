@@ -128,6 +128,18 @@ function checkAuth(pet, resp, next) {
     }
 }
 
+function getCurrentUserId(token, callback) {
+    knex('usuario').where('token', token).column('id')
+        .then(function (row) {
+            currToken = row[0];
+            callback(currToken);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err);
+            return false;
+        });
+}
+
 // Enrutador
 var router = express.Router();
 
@@ -136,16 +148,40 @@ var router = express.Router();
 // Main
 app.get('/', function(pet, resp){
    resp.status(200);
-   resp.send({message: "Bienvenido a la API de domótica IberRally"});
+   resp.send({message: "Bienvenido a la API de domótica IberRally", loginUrl: "http://localhost:8080/api/login"});
 });
 
 // Prefijo para todas las llamadas a la API
 app.use('/api', router);
 
 router.get('/casas', function(req, resp) {
-    console.log(req.url);
-    resp.status(204);
-    resp.send({message: "No implementado todavía", rally: "204"});
+    // Verificamos el usuario
+    console.log(req.query.token);
+    getCurrentUserId(req.query.token, function(res) {
+        if (!res) {
+            resp.status(500);
+            resp.send({errMessage: "No estás autenticado!", url: "http://localhost:8080/api/login"});
+
+        } else {
+            var userId = res.id;
+            knex('casa').select('id', 'nombre').where('user_id', userId)
+                .then(function(rows) {
+                    if (rows) {
+                        var result = [];
+                        resp.status(200);
+                        rows.forEach(function(element) {
+                            result.push({id: element.id, nombre: element.nombre});
+                        }, this);
+
+                        var json = {casas: result, urlCasa: "http://localhost:8080/api/casas/{:id}"};
+                        resp.send(JSON.stringify(json));
+                    } else {
+                        resp.status(404);
+                        resp.send({message: "No existen inmuebles para este usuario"});
+                    }
+                })
+        }
+    });
 });
 
 // Autenticacion
