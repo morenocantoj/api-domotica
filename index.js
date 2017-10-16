@@ -1,10 +1,26 @@
 // Dependencias
 var express = require('express');
-var bp = require('body-parser');
+var bodyParser = require('body-parser');
+var jwt = require('jwt-simple');
+var moment = require('moment'); // Fechas
 
 var app = express();
 var port = 8080;
-app.use(bp.json());
+var secret = '123456'; // Secret key para JWT
+
+app.use( bodyParser.json() );       // to support JSON-encoded bodies
+app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+  extended: true
+}));
+
+var knex = require('knex')({
+    client: 'sqlite3',
+    connection: {
+        filename: "database.db"
+    },
+    useNullAsDefault: true
+});
+
 
 // Base de datos
 var sqlite3 = require('sqlite3').verbose();
@@ -14,7 +30,7 @@ var db = new sqlite3.Database('database.db');
 function initDatabase() {
     db.serialize(function() {
         // Usuarios
-        var usuario_table = 'CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT, password TEXT)';
+        var usuario_table = 'CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT, password TEXT, token TEXT)';
         db.run(usuario_table);
         // Casas
         var casa_table = 'CREATE TABLE IF NOT EXISTS casa (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, user_id INTEGER, FOREIGN KEY(user_id) REFERENCES user(id))';
@@ -39,7 +55,7 @@ function initDatabase() {
     db.run(`DELETE FROM sqlite_sequence WHERE name = 'controlador'`);
 
     // Insertado de datos
-    db.run(`INSERT INTO usuario(login, password) VALUES(?, ?)`, ['morenocantoj', 'elfaryvive'], function(err) {
+    db.run(`INSERT INTO usuario(login, password, token) VALUES(?, ?, ?)`, ['morenocantoj', 'elfaryvive', null], function(err) {
         if (err) {
             console.log('Error: ' + err.message);
         }
@@ -77,7 +93,45 @@ function initDatabase() {
     
 }
 
-var router = express.Router(); // Enrutador
+// Metodo de login
+function login(login, password, callback) {
+
+    var payload = {
+        login: login,
+        exp: moment().add(7, 'days').valueOf()
+    }
+    var token = jwt.encode(payload, secret);
+
+    knex('usuario').where('login', login).where('password', password).update({token: token})
+        .then(function (rows) {
+            if (rows) {
+                console.log(rows);
+                callback(token);
+            } else {
+                console.log("Login no correcto");
+                callback(false)
+            }
+        })
+        .catch(function (err) {
+            console.log("Error: " + err.message);
+            callback(false);
+        });
+}
+
+// Middleware que supervisa la autenticacion
+function checkAuth(pet, resp, next) {
+    if (pet.session.usuarioActual)
+        next();
+    else {
+        resp.status(401);
+        resp.send({message: "Debes autentificarte para poder manejar la URL"});      
+    }
+}
+
+// Enrutador
+var router = express.Router();
+
+/* -- RUTAS -- */
 
 // Main
 app.get('/', function(pet, resp){
@@ -87,6 +141,37 @@ app.get('/', function(pet, resp){
 
 // Prefijo para todas las llamadas a la API
 app.use('/api', router);
+
+router.get('/casas', function(req, resp) {
+    console.log(req.url);
+    resp.status(204);
+    resp.send({message: "No implementado todavía", rally: "204"});
+});
+
+// Autenticacion
+router.post('/login', function(req, resp) {
+
+    var loginName = req.body.login;
+    var password = req.body.password;
+
+    login(loginName, password, function(result) {
+        var token = result;
+        if (token == false) {
+            console.log("False");
+            resp.status(500);
+            resp.send({errMessage: "Login incorrecto!"});
+
+        } else {
+            // Login correcto
+            console.log(token);
+            resp.status(200);
+
+            resp.send({token: token});
+        }
+    });
+})
+
+/* -- /RUTAS -- */
 
 // Puesta en marcha de BD
 initDatabase();
