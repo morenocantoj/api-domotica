@@ -128,6 +128,11 @@ function checkAuth(pet, resp, next) {
     }
 }
 
+/**
+ * Consigue el ID del usuario actual
+ * @param {*} token token pasado por parametro
+ * @param {*} callback function callback
+ */
 function getCurrentUserId(token, callback) {
     knex('usuario').where('token', token).column('id')
         .then(function (row) {
@@ -138,6 +143,55 @@ function getCurrentUserId(token, callback) {
             console.log("Error: " + err);
             return false;
         });
+}
+
+/**
+ * Devuelve todos los datos de una casa
+ * @param {*} id de la casa
+ * @param {*} callback function callback
+ */
+function getHouse(id, callback) {
+    knex('casa').where('id', id).column('id', 'nombre')
+        .then(function(row) {
+            // Solo es posible tener una entrada
+            callback(row[0]);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err);
+            return false;
+        })
+}
+
+/**
+ * Devuelve todos los controladores de una casa
+ * @param {*} house_id 
+ * @param {*} callback 
+ */
+function getControllers(house_id, callback) {
+    knex('controlador').where('casa_id', house_id).column('id', 'nombre')
+        .then(function (rows) {
+            callback(rows);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err);
+            return false;
+        })
+}
+
+/**
+ * Devuelve todos los dispositivos asociados a un controlador
+ * @param {*} controller_id 
+ * @param {*} callback 
+ */
+function getDevices(controller_id, callback) {
+    knex('dispositivo').where('controller_id', controller_id).column('id', 'nombre', 'temperatura')
+        .then(function (rows) {
+            callback(rows);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err.message);
+            return false;
+        })
 }
 
 // Enrutador
@@ -154,9 +208,17 @@ app.get('/', function(pet, resp){
 // Prefijo para todas las llamadas a la API
 app.use('/api', router);
 
+// Controlador completo de una habitacion
+router.get('/casas/:id/controller/:controller_id', function(req, resp) {
+    // Cogemos el inmueble
+    var houseId = req.params.id;
+    var controllerId = req.params.controller_id;
+    // TODO: Acabar
+});
+
+// Casas de un usuario
 router.get('/casas', function(req, resp) {
     // Verificamos el usuario
-    console.log(req.query.token);
     getCurrentUserId(req.query.token, function(res) {
         if (!res) {
             resp.status(500);
@@ -184,6 +246,42 @@ router.get('/casas', function(req, resp) {
     });
 });
 
+// Casa individual
+router.get('/casas/:id', function(req, resp) {
+    let houseId = req.params.id;
+    console.log("GET /api/casas/"+houseId);
+
+    // Comprueba si la ID es mayor que 0
+    if (houseId > 0) {
+        getHouse(houseId, function(house) {
+            if (!house) {
+                resp.status(404);
+                resp.send({errMessage: "No se ha encontrado el elemento "+houseId});
+
+            } else {
+                var result = [];
+
+                // Buscar controladores de la casa
+                getControllers(houseId, function(controllers) {
+
+                    controllers.forEach(function(element) {
+                        result.push({id: element.id, nombre: element.nombre});
+                    }, this);
+
+                    json_result = {inmueble_id: houseId, inmueble_nombre: house.nombre, controladores: result};
+                    resp.status(200);
+                    resp.send(JSON.stringify(json_result));
+                });
+            }
+        })
+
+    } else {
+        console.log("Error: El id no es válido");
+        resp.status(500);
+        resp.send({errMessage: "El id ("+houseId+") no es válido"});
+    }
+});
+
 // Autenticacion
 router.post('/login', function(req, resp) {
 
@@ -201,7 +299,6 @@ router.post('/login', function(req, resp) {
             // Login correcto
             console.log(token);
             resp.status(200);
-
             resp.send({token: token});
         }
     });
