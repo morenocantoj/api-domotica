@@ -30,7 +30,7 @@ var db = new sqlite3.Database('database.db');
 function initDatabase() {
     db.serialize(function() {
         // Usuarios
-        var usuario_table = 'CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT, password TEXT, token TEXT)';
+        var usuario_table = 'CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT, password TEXT)';
         db.run(usuario_table);
         // Casas
         var casa_table = 'CREATE TABLE IF NOT EXISTS casa (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, user_id INTEGER, FOREIGN KEY(user_id) REFERENCES user(id))';
@@ -55,7 +55,7 @@ function initDatabase() {
     db.run(`DELETE FROM sqlite_sequence WHERE name = 'controlador'`);
 
     // Insertado de datos
-    db.run(`INSERT INTO usuario(login, password, token) VALUES(?, ?, ?)`, ['morenocantoj', 'elfaryvive', null], function(err) {
+    db.run(`INSERT INTO usuario(login, password) VALUES(?, ?)`, ['morenocantoj', 'elfaryvive'], function(err) {
         if (err) {
             console.log('Error: ' + err.message);
         }
@@ -96,16 +96,16 @@ function initDatabase() {
 // Metodo de login
 function login(login, password, callback) {
 
-    var payload = {
-        login: login,
-        exp: moment().add(7, 'days').valueOf()
-    }
-    var token = jwt.encode(payload, secret);
+    knex('usuario').where('login', login).where('password', password).column('login')
+        .then(function (row) {
+            if (row) {
+                console.log("Login usuario correcto: " + login);
 
-    knex('usuario').where('login', login).where('password', password).update({token: token})
-        .then(function (rows) {
-            if (rows) {
-                console.log(rows);
+                var payload = {
+                    login: login,
+                    exp: moment().add(7, 'days').valueOf()
+                }
+                var token = jwt.encode(payload, secret);
                 callback(token);
             } else {
                 console.log("Login no correcto");
@@ -118,26 +118,45 @@ function login(login, password, callback) {
         });
 }
 
+// User para las SELECT
+var username;
+
 // Middleware que supervisa la autenticacion
-function checkAuth(pet, resp, next) {
-    if (pet.session.usuarioActual)
-        next();
-    else {
-        resp.status(401);
-        resp.send({message: "Debes autentificarte para poder manejar la URL"});      
+function checkAuth(req, resp, next) {
+    var bearerToken;
+    var bearerHeader = req.headers["authorization"];
+    if (typeof bearerHeader !== 'undefined') {
+        var bearer = bearerHeader.split(" ");
+        bearerToken = bearer[1];
+        token = bearerToken;
+        
+        try {
+            let decoded = jwt.decode(token, secret);
+            username = decoded.login;
+            console.log(username);
+            next();
+
+        } catch (error) {
+            resp.status(500);
+            resp.send({errMessage: "Token no valido o sesion expirada",
+                url: "http://localhost:8080/api/login"});
+        }
+    } else {
+        res.status(403);
+        res.send({errMessage: "Necesitas un token para poder realizar esta peticion"});
     }
 }
 
 /**
- * Consigue el ID del usuario actual
+ * Consigue el ID del usuario actual comprobando el token
  * @param {*} token token pasado por parametro
  * @param {*} callback function callback
  */
-function getCurrentUserId(token, callback) {
-    knex('usuario').where('token', token).column('id')
+function getCurrentUserId(user, callback) {
+    knex('usuario').where('login', user).column('id')
         .then(function (row) {
-            currToken = row[0];
-            callback(currToken);
+            user = row[0];
+            callback(user);
         })
         .catch(function (err) {
             console.log("Error: " + err);
@@ -213,16 +232,28 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
     // Cogemos el inmueble
     var houseId = req.params.id;
     var controllerId = req.params.controller_id;
-    // TODO: Acabar
+
+    if (houseId > 0 && controllerId > 0) {
+        getHouse(houseId, function(house) {
+            //if (...)
+        });
+
+    } else {
+        console.log("Error: El id no es válido");
+        resp.status(500);
+        resp.send({errMessage: "Id "})
+    }
 });
 
 // Casas de un usuario
-router.get('/casas', function(req, resp) {
+router.get('/casas', checkAuth, function(req, resp) {
     // Verificamos el usuario
-    getCurrentUserId(req.query.token, function(res) {
+    console.log('GET /api/casas');
+    console.log(username);
+    getCurrentUserId(username, function(res) {
         if (!res) {
             resp.status(500);
-            resp.send({errMessage: "No estás autenticado!", url: "http://localhost:8080/api/login"});
+            resp.send({errMessage: "No estas autenticado!", url: "http://localhost:8080/api/login"});
 
         } else {
             var userId = res.id;
@@ -291,7 +322,6 @@ router.post('/login', function(req, resp) {
     login(loginName, password, function(result) {
         var token = result;
         if (token == false) {
-            console.log("False");
             resp.status(500);
             resp.send({errMessage: "Login incorrecto!"});
 
