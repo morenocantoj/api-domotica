@@ -264,6 +264,22 @@ function updateDevice(device_id, newValue, callback) {
     });
 }
 
+/**
+ * Borra un dispositivo
+ * @param {*} device_id 
+ * @param {*} callback 
+ */
+function deleteDevice(device_id, callback) {
+    knex('dispositivo').where('id', device_id).del()
+        .then(function (row) {
+            callback(row);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err.message);
+            return false;
+        })
+}
+
 // Enrutador
 var router = express.Router();
 
@@ -421,6 +437,44 @@ router.put('/casas/:id/controller/:controller_id/regulador/:device_id', checkAut
                         });
                     }
 
+                } else {
+                    resp.status(404);
+                    resp.send({errMessage: "No se encuentra algunos de los elementos enviados"});
+                }
+            })
+        });
+    } else {
+        console.log("Error: El id no es válido");
+        resp.status(500);
+        resp.send({errMessage: "El id proporcionado no es válido"});
+    }
+});
+
+// Eliminar un dispositivo
+router.delete('/casas/:id/controller/:controller_id/regulador/:device_id', checkAuth, function(req, resp) {
+    // Cogemos el inmueble
+    var houseId = req.params.id;
+    var controllerId = req.params.controller_id;
+    var deviceId = req.params.device_id;
+    console.log("DELETE /api/casas/"+houseId+"/controller/"+controllerId+"/regulador/"+deviceId);
+
+    if (houseId > 0 && controllerId > 0 && deviceId > 0) {
+        getHouse(houseId, function(house) {
+            getController(controllerId, function(controller) {
+                // Actualizamos el dispositivo
+                if (house && controller) {
+                    deleteDevice(deviceId, function(response) {
+
+                        if (response) {
+                            resp.status(200);
+                            resp.send({message: "Dispositivo "+deviceId+" eliminado correctamente",
+                                url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+
+                        } else {
+                            resp.status(500);
+                            resp.send({errMessage: "Ha ocurrido un problema eliminando el dispositivo"});
+                        }
+                    });
                 } else {
                     resp.status(404);
                     resp.send({errMessage: "No se encuentra algunos de los elementos enviados"});
