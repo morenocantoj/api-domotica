@@ -3,6 +3,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var jwt = require('jwt-simple');
 var moment = require('moment'); // Fechas
+var url = require('url');
 
 var app = express();
 var port = 8080;
@@ -213,6 +214,17 @@ function getDevices(controller_id, callback) {
         })
 }
 
+function getController(controller_id, callback) {
+    knex('controlador').where('id', controller_id).column('id', 'nombre', 'casa_id')
+        .then(function (rows) {
+            callback(rows[0]);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err.message);
+            return false;
+        });
+}
+
 // Enrutador
 var router = express.Router();
 
@@ -233,15 +245,87 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
     var houseId = req.params.id;
     var controllerId = req.params.controller_id;
 
+    console.log("GET /api/casas/"+houseId+"/controller/"+controllerId);
+
     if (houseId > 0 && controllerId > 0) {
         getHouse(houseId, function(house) {
-            //if (...)
+            if (!house) {
+                resp.status(404);
+                resp.send({errMessage: "No se ha encontrado el elemento "+houseId});
+
+            } else {
+                getController(controllerId, function(controller) {
+                    if (!controller) {
+                        resp.status(404);
+                        resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
+
+                    } else {
+                        var controllerName = controller.nombre;
+
+                        var json_result = {};
+                        getDevices(controllerId, function(devices) {
+                            var result = [];
+                            if (devices) {
+
+                                // Por cada dispositivo
+                                devices.forEach(function(element) {
+                                    result.push({dispositivo_id: element.id, nombre: element.nombre, 
+                                        temperatura: element.temperatura, 
+                                        url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId+
+                                                '/regulador/'+element.id});
+                                }, this);
+                            }
+
+                            json_result = {id: controllerId, nombre: controllerName, casa_id: houseId, 
+                                dispositivos: result, 
+                                anyadir_dispositivo: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId};
+                            
+                            resp.status(200);
+                            resp.send(JSON.stringify(json_result));
+                        });
+                    }
+                });
+            }
         });
 
     } else {
         console.log("Error: El id no es válido");
         resp.status(500);
-        resp.send({errMessage: "Id "})
+        resp.send({errMessage: "El id proporcionado no es válido"})
+    }
+});
+
+// Anyadir un dispositivo a un controlador
+router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, resp) {
+    // Cogemos el inmueble
+    var houseId = req.params.id;
+    var controllerId = req.params.controller_id;
+
+    console.log("POST /api/casas/"+houseId+"/controller/"+controllerId);
+
+    if (houseId > 0 && controllerId > 0) {
+        getHouse(houseId, function(house) {
+            if (!house) {
+                resp.status(404);
+                resp.send({errMessage: "No se ha encontrado el elemento "+houseId});
+
+            } else {
+                getController(controllerId, function(controller) {
+                    if (!controller) {
+                        resp.status(404);
+                        resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
+
+                    } else {
+                        //TODO
+                    }
+                });
+            }
+        });
+
+    } else {
+        console.log("Error: El id no es válido");
+        resp.status(500);
+        resp.send({errMessage: "El id proporcionado no es válido"})
     }
 });
 
