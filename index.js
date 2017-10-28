@@ -214,10 +214,26 @@ function getDevices(controller_id, callback) {
         })
 }
 
+/**
+ * Devuelve un controlador asociado a una casa con todos sus dispositivos
+ * @param {*} controller_id 
+ * @param {*} callback 
+ */
 function getController(controller_id, callback) {
     knex('controlador').where('id', controller_id).column('id', 'nombre', 'casa_id')
         .then(function (rows) {
             callback(rows[0]);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err.message);
+            return false;
+        });
+}
+
+function insertDevice(controller, name, callback) {
+    knex('dispositivo').returning('id').insert({temperatura: 21, nombre: name, controller_id: controller})
+        .then(function (rows) {
+            console.log(rows);
         })
         .catch(function (err) {
             console.log("Error: " + err.message);
@@ -307,7 +323,7 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
         getHouse(houseId, function(house) {
             if (!house) {
                 resp.status(404);
-                resp.send({errMessage: "No se ha encontrado el elemento "+houseId});
+                resp.send({errMessage: "No se ha encontrado el inmueble "+houseId});
 
             } else {
                 getController(controllerId, function(controller) {
@@ -316,7 +332,24 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
                         resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
 
                     } else {
-                        //TODO
+                        var nombre = req.body.nombre;
+                        if (!nombre) {
+                            resp.status(400);
+                            resp.send({errMessage: "Debes especificar un nombre para el dispositivo"});
+
+                        } else {
+                            insertDevice(controllerId, nombre, function (response) {
+                                if (response) {
+                                    resp.status(201);
+                                    resp.send({message: "Dispositivo "+response+" creado correctamente", 
+                                        url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+
+                                } else {
+                                    resp.status(500);
+                                    resp.send({errMessage: "Ha ocurrido un problema registrando el dispositivo"});
+                                }
+                            });
+                        }
                     }
                 });
             }
