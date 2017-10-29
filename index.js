@@ -97,9 +97,10 @@ function initDatabase() {
 // Metodo de login
 function login(login, password, callback) {
 
-    knex('usuario').where('login', login).where('password', password).column('login')
+    knex('usuario').where({login: login, password: password}).select('login', 'password')
         .then(function (row) {
-            if (row) {
+            console.log(row);
+            if (row[0].login === login && row[0].password === password) {
                 console.log("Login usuario correcto: " + login);
 
                 var payload = {
@@ -582,10 +583,11 @@ router.get('/casas', checkAuth, function(req, resp) {
                         var result = [];
                         resp.status(200);
                         rows.forEach(function(element) {
-                            result.push({id: element.id, nombre: element.nombre});
+                            result.push({id: element.id, nombre: element.nombre, 
+                                url: "http://"+req.headers.host+"/api/casas/"+element.id});
                         }, this);
 
-                        var json = {casas: result, urlCasa: "http://localhost:8080/api/casas/{:id}"};
+                        var json = {casas: result};
                         resp.send(JSON.stringify(json));
                     } else {
                         resp.status(404);
@@ -615,7 +617,8 @@ router.get('/casas/:id', function(req, resp) {
                 getControllers(houseId, function(controllers) {
 
                     controllers.forEach(function(element) {
-                        result.push({id: element.id, nombre: element.nombre});
+                        result.push({id: element.id, nombre: element.nombre,
+                            url: "http://"+req.headers.host+"/api/casas/"+houseId+"/controller/"+element.id});
                     }, this);
 
                     json_result = {inmueble_id: houseId, inmueble_nombre: house.nombre, controladores: result};
@@ -657,6 +660,8 @@ router.post('/login', function(req, resp) {
 
 // Puesta en marcha de BD
 initDatabase();
+
+module.exports = app;
 
 // Arranque del servidor
 app.listen(port);
