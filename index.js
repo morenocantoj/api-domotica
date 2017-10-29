@@ -54,6 +54,7 @@ function initDatabase() {
     db.run(`DELETE FROM sqlite_sequence WHERE name = 'casa'`);
     db.run(`DELETE FROM controlador WHERE id > 0`);
     db.run(`DELETE FROM sqlite_sequence WHERE name = 'controlador'`);
+    db.run(`DELETE FROM dispositivo WHERE id = 1`);
 
     // Insertado de datos
     db.run(`INSERT INTO usuario(login, password) VALUES(?, ?)`, ['morenocantoj', 'elfaryvive'], function(err) {
@@ -87,6 +88,13 @@ function initDatabase() {
     });
     // Casa: 1, ID: 3
     db.run(`INSERT INTO controlador(nombre, casa_id) VALUES(?, ?)`, ['Habitación 2', '1'], function(err) {
+        if (err) {
+            console.log('Error: ' + err.message);
+        }
+    });
+
+    // Casa 1, Controller: 1, ID: 1
+    db.run('INSERT INTO dispositivo(id, nombre, temperatura, controller_id) VALUES(?, ?, ?, ?)', ['1', 'Prueba', '1','1'], function(err) {
         if (err) {
             console.log('Error: ' + err.message);
         }
@@ -413,7 +421,7 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
                                 anyadir_dispositivo: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId};
                             
                             resp.status(200);
-                            resp.send(JSON.stringify(json_result));
+                            resp.send(json_result);
                         });
                     }
                 });
@@ -588,7 +596,7 @@ router.get('/casas', checkAuth, function(req, resp) {
                         }, this);
 
                         var json = {casas: result};
-                        resp.send(JSON.stringify(json));
+                        resp.send(json);
                     } else {
                         resp.status(404);
                         resp.send({message: "No existen inmuebles para este usuario"});
@@ -623,7 +631,7 @@ router.get('/casas/:id', function(req, resp) {
 
                     json_result = {inmueble_id: houseId, inmueble_nombre: house.nombre, controladores: result};
                     resp.status(200);
-                    resp.send(JSON.stringify(json_result));
+                    resp.send(json_result);
                 });
             }
         })
