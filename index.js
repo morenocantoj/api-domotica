@@ -280,6 +280,27 @@ function deleteDevice(device_id, callback) {
         })
 }
 
+/**
+ * Inserts a programation into a device
+ * @param {*} device_id 
+ * @param {*} controller_id
+ * @param {*} date 
+ * @param {*} action 
+ * @param {*} callback 
+ */
+function insertProgramation(device_id, controller_id, date, action, callback) {
+    console.log("TODO: "+device_id+" "+controller_id+" "+date+" ");
+    knex('programacion').insert({fecha: date, action: action, controller_id: controller_id, dispositivo_id: device_id})
+        .returning('id')
+        .then(function (row) {
+            callback(true);
+        })
+        .catch(function (err) {
+            console.log("Error: " + err.message);
+            callback(false);
+        })
+}
+
 // Enrutador
 var router = express.Router();
 
@@ -293,6 +314,61 @@ app.get('/', function(pet, resp){
 
 // Prefijo para todas las llamadas a la API
 app.use('/api', router);
+
+// Anyadir programacion
+router.post('/casas/:id/controller/:controller_id/programacion', function(req, resp) {
+    // Cogemos el inmueble
+    var houseId = req.params.id;
+    var controllerId = req.params.controller_id;
+
+    console.log("POST /api/casas/"+houseId+"/controller/"+controllerId+"/programacion");
+    
+        if (houseId > 0 && controllerId > 0) {
+            getHouse(houseId, function(house) {
+                if (!house) {
+                    resp.status(404);
+                    resp.send({errMessage: "No se ha encontrado el inmueble "+houseId});
+    
+                } else {
+                    getController(controllerId, function(controller) {
+                        if (!controller) {
+                            resp.status(404);
+                            resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
+    
+                        } else {
+                            var dispositivoId = req.body.dispositivo_id;
+                            var fecha = req.body.fecha;
+                            var action = req.body.action;
+
+                            if(dispositivoId && fecha && action) {
+                                // Anyadimos programacion
+                                insertProgramation(dispositivoId, controllerId, fecha, action, function(response) {
+                                    if (response) {
+                                        resp.status(200);
+                                        resp.send({message: "Accion programada correctamente", 
+                                            url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+
+                                    } else {
+                                        resp.status(500);
+                                        resp.send({errMessage: "Error al insertar la programacion"});
+                                    }
+                                });
+
+                            } else {
+                                resp.status(400);
+                                resp.send({errMessage: "Parametros invalidos (id del dispositivo), (fecha), (accion)"});
+                            }
+                        }
+                    });
+                }
+            });
+    
+        } else {
+            console.log("Error: El id no es válido");
+            resp.status(500);
+            resp.send({errMessage: "El id proporcionado no es válido"})
+        }
+});
 
 // Controlador completo de una habitacion
 router.get('/casas/:id/controller/:controller_id', function(req, resp) {
