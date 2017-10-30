@@ -58,4 +58,6 @@ typings/
 # dotenv environment variables file
 .env
 
+.bundle
+
 >>>>>>> 395de4f5e127ee72bb3a139fa26115a1a4243d8d
