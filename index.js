@@ -17,7 +17,7 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
 var knex = require('knex')({
     client: 'sqlite3',
     connection: {
-        filename: "database.db"
+        filename: "./database.db"
     },
     useNullAsDefault: true
 });
