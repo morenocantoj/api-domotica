@@ -1,6 +1,6 @@
 // Dependencias
 var express = require('express');
-var bodyParser = require('body-parser');
+var bodyparser = require('body-parser');
 var jwt = require('jwt-simple');
 var moment = require('moment'); // Fechas
 var url = require('url');
@@ -9,8 +9,8 @@ var app = express();
 var port = 8080;
 var secret = '123456'; // Secret key para JWT
 
-app.use( bodyParser.json() );       // to support JSON-encoded bodies
-app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+app.use( bodyparser.json() );       // to support JSON-encoded bodies
+app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
 
@@ -319,7 +319,7 @@ var router = express.Router();
 // Main
 app.get('/', function(pet, resp){
    resp.status(200);
-   resp.send({message: "Bienvenido a la API de domótica IberRally", loginUrl: "http://localhost:8080/api/login"});
+   resp.send({message: "Bienvenido a la API de domótica IberRally", loginUrl: "http://"+req.headers.host+"/api/login"});
 });
 
 // Prefijo para todas las llamadas a la API
