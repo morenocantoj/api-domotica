@@ -47,7 +47,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
     });
     it ('GET /api/casas/1/controller/1', function(done) {
         supertest(app)
-        .get('/api/casas/1/controller/1')
+        .get('/api/casas/1/controller/1?offset=1')
         .set('Content-Type', 'application/json')
         .expect(function (res) {
             assert(res.body.id, "1");

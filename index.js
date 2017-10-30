@@ -212,8 +212,9 @@ function getControllers(house_id, callback) {
  * @param {*} controller_id 
  * @param {*} callback 
  */
-function getDevices(controller_id, callback) {
+function getDevices(controller_id, offset, callback) {
     knex('dispositivo').where('controller_id', controller_id).column('id', 'nombre', 'temperatura')
+    .limit(5).offset(offset*5)
         .then(function (rows) {
             callback(rows);
         })
@@ -401,9 +402,16 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
 
                     } else {
                         var controllerName = controller.nombre;
-
+                        var offset = parseInt(req.query.offset);
                         var json_result = {};
-                        getDevices(controllerId, function(devices) {
+
+                        // Necesario para el buen funcionamiento
+                        if (!offset) {
+                            resp.status(400);
+                            resp.send({errMessage: "Debes poner el parametro offset"});
+                        }
+                        // Offset empieza desde 0
+                        getDevices(controllerId, offset-1, function(devices) {
                             var result = [];
                             if (devices) {
 
@@ -418,7 +426,8 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
 
                             json_result = {id: controllerId, nombre: controllerName, casa_id: houseId, 
                                 dispositivos: result, 
-                                anyadir_dispositivo: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId};
+                                anyadir_dispositivo: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId,
+                                siguiente: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId+'?offset='+(offset+1)};
                             
                             resp.status(200);
                             resp.send(json_result);
