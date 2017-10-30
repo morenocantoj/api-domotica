@@ -319,7 +319,7 @@ var router = express.Router();
 // Main
 app.get('/', function(pet, resp){
    resp.status(200);
-   resp.send({message: "Bienvenido a la API de domótica IberRally", loginUrl: "http://"+req.headers.host+"/api/login"});
+   resp.send({message: "Bienvenido a la API de domótica IberRally", loginUrl: "http://"+pet.headers.host+"/api/login"});
 });
 
 // Prefijo para todas las llamadas a la API
