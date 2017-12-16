@@ -4,15 +4,17 @@ var bodyparser = require('body-parser');
 var jwt = require('jwt-simple');
 var moment = require('moment'); // Fechas
 var url = require('url');
+var cors = require('cors');
 
 var app = express();
-var port = 8080;
+var port = 3000;
 var secret = '123456'; // Secret key para JWT
 
 app.use( bodyparser.json() );       // to support JSON-encoded bodies
 app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
+app.use(cors());
 
 var knex = require('knex')({
     client: 'sqlite3',
@@ -99,7 +101,7 @@ function initDatabase() {
             console.log('Error: ' + err.message);
         }
     });
-    
+
 }
 
 // Metodo de login
@@ -139,7 +141,7 @@ function checkAuth(req, resp, next) {
         var bearer = bearerHeader.split(" ");
         bearerToken = bearer[1];
         token = bearerToken;
-        
+
         try {
             let decoded = jwt.decode(token, secret);
             username = decoded.login;
@@ -193,8 +195,8 @@ function getHouse(id, callback) {
 
 /**
  * Devuelve todos los controladores de una casa
- * @param {*} house_id 
- * @param {*} callback 
+ * @param {*} house_id
+ * @param {*} callback
  */
 function getControllers(house_id, callback) {
     knex('controlador').where('casa_id', house_id).column('id', 'nombre')
@@ -209,12 +211,19 @@ function getControllers(house_id, callback) {
 
 /**
  * Devuelve todos los dispositivos asociados a un controlador
- * @param {*} controller_id 
- * @param {*} callback 
+ * @param {*} controller_id
+ * @param {*} callback
  */
 function getDevices(controller_id, offset, callback) {
+  var limit = 5;
+
+  if (isNaN(offset)) {
+    limit = -1;
+    offset = 0;
+  }
+
     knex('dispositivo').where('controller_id', controller_id).column('id', 'nombre', 'temperatura')
-    .limit(5).offset(offset*5)
+    .limit(limit).offset(offset*5)
         .then(function (rows) {
             callback(rows);
         })
@@ -226,8 +235,8 @@ function getDevices(controller_id, offset, callback) {
 
 /**
  * Devuelve un controlador asociado a una casa con todos sus dispositivos
- * @param {*} controller_id 
- * @param {*} callback 
+ * @param {*} controller_id
+ * @param {*} callback
  */
 function getController(controller_id, callback) {
     knex('controlador').where('id', controller_id).column('id', 'nombre', 'casa_id')
@@ -242,9 +251,9 @@ function getController(controller_id, callback) {
 
 /**
  * Inserta un dispositivo en un controlador de una casa
- * @param {*} controller 
- * @param {*} name 
- * @param {*} callback 
+ * @param {*} controller
+ * @param {*} name
+ * @param {*} callback
  */
 function insertDevice(controller, name, callback) {
     knex('dispositivo').returning('id').insert({temperatura: 21, nombre: name, controller_id: controller})
@@ -259,9 +268,9 @@ function insertDevice(controller, name, callback) {
 
 /**
  * Actualiza la temperatura de un regulador
- * @param {*} device_id 
- * @param {*} newValue 
- * @param {*} callback 
+ * @param {*} device_id
+ * @param {*} newValue
+ * @param {*} callback
  */
 function updateDevice(device_id, newValue, callback) {
     knex('dispositivo').where('id', device_id).update('temperatura', newValue)
@@ -276,8 +285,8 @@ function updateDevice(device_id, newValue, callback) {
 
 /**
  * Borra un dispositivo
- * @param {*} device_id 
- * @param {*} callback 
+ * @param {*} device_id
+ * @param {*} callback
  */
 function deleteDevice(device_id, callback) {
     knex('dispositivo').where('id', device_id).del()
@@ -292,11 +301,11 @@ function deleteDevice(device_id, callback) {
 
 /**
  * Inserts a programation into a device
- * @param {*} device_id 
+ * @param {*} device_id
  * @param {*} controller_id
- * @param {*} date 
- * @param {*} action 
- * @param {*} callback 
+ * @param {*} date
+ * @param {*} action
+ * @param {*} callback
  */
 function insertProgramation(device_id, controller_id, date, action, callback) {
     console.log("TODO: "+device_id+" "+controller_id+" "+date+" ");
@@ -332,19 +341,19 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
     var controllerId = req.params.controller_id;
 
     console.log("POST /api/casas/"+houseId+"/controller/"+controllerId+"/programacion");
-    
+
         if (houseId > 0 && controllerId > 0) {
             getHouse(houseId, function(house) {
                 if (!house) {
                     resp.status(404);
                     resp.send({errMessage: "No se ha encontrado el inmueble "+houseId});
-    
+
                 } else {
                     getController(controllerId, function(controller) {
                         if (!controller) {
                             resp.status(404);
                             resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
-    
+
                         } else {
                             var dispositivoId = req.body.dispositivo_id;
                             var fecha = req.body.fecha;
@@ -355,7 +364,7 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
                                 insertProgramation(dispositivoId, controllerId, fecha, action, function(response) {
                                     if (response) {
                                         resp.status(200);
-                                        resp.send({message: "Accion programada correctamente", 
+                                        resp.send({message: "Accion programada correctamente",
                                             url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
 
                                     } else {
@@ -372,7 +381,7 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
                     });
                 }
             });
-    
+
         } else {
             console.log("Error: El id no es válido");
             resp.status(500);
@@ -405,11 +414,6 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
                         var offset = parseInt(req.query.offset);
                         var json_result = {};
 
-                        // Necesario para el buen funcionamiento
-                        if (!offset) {
-                            resp.status(400);
-                            resp.send({errMessage: "Debes poner el parametro offset"});
-                        }
                         // Offset empieza desde 0
                         getDevices(controllerId, offset-1, function(devices) {
                             var result = [];
@@ -417,18 +421,18 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
 
                                 // Por cada dispositivo
                                 devices.forEach(function(element) {
-                                    result.push({dispositivo_id: element.id, nombre: element.nombre, 
-                                        temperatura: element.temperatura, 
+                                    result.push({dispositivo_id: element.id, nombre: element.nombre,
+                                        temperatura: element.temperatura,
                                         url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId+
                                                 '/regulador/'+element.id});
                                 }, this);
                             }
 
-                            json_result = {id: controllerId, nombre: controllerName, casa_id: houseId, 
-                                dispositivos: result, 
+                            json_result = {id: controllerId, nombre: controllerName, casa_id: houseId,
+                                dispositivos: result,
                                 anyadir_dispositivo: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId,
                                 siguiente: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId+'?offset='+(offset+1)};
-                            
+
                             resp.status(200);
                             resp.send(json_result);
                         });
@@ -474,7 +478,7 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
                             insertDevice(controllerId, nombre, function (response) {
                                 if (response) {
                                     resp.status(201);
-                                    resp.send({message: "Dispositivo "+response+" creado correctamente", 
+                                    resp.send({message: "Dispositivo "+response+" creado correctamente",
                                         url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
 
                                 } else {
@@ -521,7 +525,7 @@ router.put('/casas/:id/controller/:controller_id/regulador/:device_id', checkAut
                             console.log("repsonse "+ response);
                             if (response) {
                                 resp.status(200);
-                                resp.send({nueva_temperatura: newTemperatura, 
+                                resp.send({nueva_temperatura: newTemperatura,
                                     url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
 
                             } else {
@@ -600,7 +604,7 @@ router.get('/casas', checkAuth, function(req, resp) {
                         var result = [];
                         resp.status(200);
                         rows.forEach(function(element) {
-                            result.push({id: element.id, nombre: element.nombre, 
+                            result.push({id: element.id, nombre: element.nombre,
                                 url: "http://"+req.headers.host+"/api/casas/"+element.id});
                         }, this);
 

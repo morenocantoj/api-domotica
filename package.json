@@ -12,6 +12,7 @@
   "dependencies": {
     "assert": "^1.4.1",
     "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
     "express": "^4.15.4",
     "express-session": "^1.15.6",
     "jwt-simple": "^0.5.1",
