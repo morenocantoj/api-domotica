@@ -7,6 +7,7 @@ var url = require('url');
 var cors = require('cors');
 
 var app = express();
+app.use(cors());
 var port = 3000;
 var secret = '123456'; // Secret key para JWT
 
@@ -14,7 +15,6 @@ app.use( bodyparser.json() );       // to support JSON-encoded bodies
 app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
-app.use(cors());
 
 var knex = require('knex')({
     client: 'sqlite3',
@@ -477,6 +477,7 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
                         } else {
                             insertDevice(controllerId, nombre, function (response) {
                                 if (response) {
+                                  console.log(response);
                                     resp.status(201);
                                     resp.send({message: "Dispositivo "+response+" creado correctamente",
                                         url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
