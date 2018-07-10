@@ -17,97 +17,19 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
 }));
 
 var knex = require('knex')({
-    client: 'sqlite3',
+    client: 'mysql',
     connection: {
-        filename: "./database.db"
-    },
-    useNullAsDefault: true
+        host: '127.0.0.1',
+        user: 'domoti-k',
+        password: 'domoti-k',
+        database: 'domoti-k'
+    }
 });
-
-
-// Base de datos
-var sqlite3 = require('sqlite3').verbose();
-var db = new sqlite3.Database('database.db');
-
-// Inicializado de Base de datos
-function initDatabase() {
-    db.serialize(function() {
-        // Usuarios
-        var usuario_table = 'CREATE TABLE IF NOT EXISTS usuario (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT, password TEXT)';
-        db.run(usuario_table);
-        // Casas
-        var casa_table = 'CREATE TABLE IF NOT EXISTS casa (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, user_id INTEGER, FOREIGN KEY(user_id) REFERENCES user(id))';
-        db.run(casa_table);
-        // Controladores
-        var controlador_table = 'CREATE TABLE IF NOT EXISTS controlador (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, casa_id INTEGER, FOREIGN KEY(casa_id) REFERENCES casa(id))';
-        db.run(controlador_table);
-        // Dispositivos
-        var dispositivo_table = 'CREATE TABLE IF NOT EXISTS dispositivo (id INTEGER PRIMARY KEY AUTOINCREMENT, temperatura INT, nombre TEXT, controller_id INTEGER, FOREIGN KEY(controller_id) REFERENCES controlador(id))';
-        db.run(dispositivo_table);
-        // Programaciones
-        var programacion_table = 'CREATE TABLE IF NOT EXISTS programacion (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha DATETIME, action TEXT, controller_id INTEGER, dispositivo_id INTEGER, FOREIGN KEY(controller_id) REFERENCES controlador(id), FOREIGN KEY(dispositivo_id) REFERENCES dispositivo(id))';
-        db.run(programacion_table);
-    });
-
-    // Borrado de datos antes de insertado
-    db.run(`DELETE FROM usuario WHERE id > 0`);
-    db.run(`DELETE FROM sqlite_sequence WHERE name = 'usuario'`);
-    db.run(`DELETE FROM casa WHERE id > 0`);
-    db.run(`DELETE FROM sqlite_sequence WHERE name = 'casa'`);
-    db.run(`DELETE FROM controlador WHERE id > 0`);
-    db.run(`DELETE FROM sqlite_sequence WHERE name = 'controlador'`);
-    db.run(`DELETE FROM dispositivo WHERE id = 1`);
-
-    // Insertado de datos
-    db.run(`INSERT INTO usuario(login, password) VALUES(?, ?)`, ['morenocantoj', 'elfaryvive'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-    // ID: 1
-    db.run(`INSERT INTO casa(nombre, user_id) VALUES(?, ?)`, ['Adosado en Marbella', '1'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-    // ID: 2
-    db.run(`INSERT INTO casa(nombre, user_id) VALUES(?, ?)`, ['Piso en San Vicente', '1'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-    // Casa: 1, ID: 1
-    db.run(`INSERT INTO controlador(nombre, casa_id) VALUES(?, ?)`, ['Vestíbulo', '1'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-    // Casa: 1, ID: 2
-    db.run(`INSERT INTO controlador(nombre, casa_id) VALUES(?, ?)`, ['Habitación de matrimonio', '1'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-    // Casa: 1, ID: 3
-    db.run(`INSERT INTO controlador(nombre, casa_id) VALUES(?, ?)`, ['Habitación 2', '1'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-
-    // Casa 1, Controller: 1, ID: 1
-    db.run('INSERT INTO dispositivo(id, nombre, temperatura, controller_id) VALUES(?, ?, ?, ?)', ['1', 'Prueba', '1','1'], function(err) {
-        if (err) {
-            console.log('Error: ' + err.message);
-        }
-    });
-
-}
 
 // Metodo de login
 function login(login, password, callback) {
 
-    knex('usuario').where({login: login, password: password}).select('login', 'password')
+    knex('usuarios').where({login: login, password: password}).select('login', 'password')
         .then(function (row) {
             console.log(row);
             if (row[0].login === login && row[0].password === password) {
@@ -165,7 +87,7 @@ function checkAuth(req, resp, next) {
  * @param {*} callback function callback
  */
 function getCurrentUserId(user, callback) {
-    knex('usuario').where('login', user).column('id')
+    knex('usuarios').where('login', user).column('id')
         .then(function (row) {
             user = row[0];
             callback(user);
@@ -182,7 +104,7 @@ function getCurrentUserId(user, callback) {
  * @param {*} callback function callback
  */
 function getHouse(id, callback) {
-    knex('casa').where('id', id).column('id', 'nombre')
+    knex('casas').where('id', id).column('id', 'nombre')
         .then(function(row) {
             // Solo es posible tener una entrada
             callback(row[0]);
@@ -199,7 +121,7 @@ function getHouse(id, callback) {
  * @param {*} callback
  */
 function getControllers(house_id, callback) {
-    knex('controlador').where('casa_id', house_id).column('id', 'nombre')
+    knex('controladores').where('casa_id', house_id).column('id', 'nombre')
         .then(function (rows) {
             callback(rows);
         })
@@ -216,21 +138,20 @@ function getControllers(house_id, callback) {
  */
 function getDevices(controller_id, offset, callback) {
   var limit = 5;
+  var query = knex('dispositivos').where('controller_id', controller_id).column('id', 'nombre', 'temperatura')
 
-  if (isNaN(offset)) {
-    limit = -1;
-    offset = 0;
+  // If client wants to paginate
+  if (!isNaN(offset)) {
+    query = query.limit(limit).offset(offset*5)
   }
 
-    knex('dispositivo').where('controller_id', controller_id).column('id', 'nombre', 'temperatura')
-    .limit(limit).offset(offset*5)
-        .then(function (rows) {
-            callback(rows);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err.message);
-            return false;
-        })
+  query.then(function (rows) {
+      callback(rows);
+  })
+  .catch(function (err) {
+      console.log("Error: " + err.message);
+      return false;
+  })
 }
 
 /**
@@ -239,7 +160,7 @@ function getDevices(controller_id, offset, callback) {
  * @param {*} callback
  */
 function getController(controller_id, callback) {
-    knex('controlador').where('id', controller_id).column('id', 'nombre', 'casa_id')
+    knex('controladores').where('id', controller_id).column('id', 'nombre', 'casa_id')
         .then(function (rows) {
             callback(rows[0]);
         })
@@ -256,7 +177,7 @@ function getController(controller_id, callback) {
  * @param {*} callback
  */
 function insertDevice(controller, name, callback) {
-    knex('dispositivo').returning('id').insert({temperatura: 21, nombre: name, controller_id: controller})
+    knex('dispositivos').returning('id').insert({temperatura: 21, nombre: name, controller_id: controller})
         .then(function (rows) {
             callback(rows[0]);
         })
@@ -273,7 +194,7 @@ function insertDevice(controller, name, callback) {
  * @param {*} callback
  */
 function updateDevice(device_id, newValue, callback) {
-    knex('dispositivo').where('id', device_id).update('temperatura', newValue)
+    knex('dispositivos').where('id', device_id).update('temperatura', newValue)
     .then(function (rows) {
         callback(rows);
     })
@@ -289,7 +210,7 @@ function updateDevice(device_id, newValue, callback) {
  * @param {*} callback
  */
 function deleteDevice(device_id, callback) {
-    knex('dispositivo').where('id', device_id).del()
+    knex('dispositivos').where('id', device_id).del()
         .then(function (row) {
             callback(row);
         })
@@ -308,8 +229,7 @@ function deleteDevice(device_id, callback) {
  * @param {*} callback
  */
 function insertProgramation(device_id, controller_id, date, action, callback) {
-    console.log("TODO: "+device_id+" "+controller_id+" "+date+" ");
-    knex('programacion').insert({fecha: date, action: action, controller_id: controller_id, dispositivo_id: device_id})
+    knex('programaciones').insert({fecha: date, action: action, controller_id: controller_id, dispositivo_id: device_id})
         .returning('id')
         .then(function (row) {
             callback(true);
@@ -599,7 +519,7 @@ router.get('/casas', checkAuth, function(req, resp) {
 
         } else {
             var userId = res.id;
-            knex('casa').select('id', 'nombre').where('user_id', userId)
+            knex('casas').select('id', 'nombre').where('user_id', userId)
                 .then(function(rows) {
                     if (rows) {
                         var result = [];
@@ -679,9 +599,6 @@ router.post('/login', function(req, resp) {
 })
 
 /* -- /RUTAS -- */
-
-// Puesta en marcha de BD
-initDatabase();
 
 module.exports = app;
 
