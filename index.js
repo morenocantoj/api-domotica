@@ -138,7 +138,8 @@ function getControllers(house_id, callback) {
  */
 function getDevices(controller_id, offset, callback) {
   var limit = 5;
-  var query = knex('dispositivos').where('controller_id', controller_id).column('id', 'nombre', 'temperatura')
+  var query = knex('dispositivos').where('controller_id', controller_id).column('id', 'nombre', 'temperatura',
+  'tipo', 'port', 'status')
 
   // If client wants to paginate
   if (!isNaN(offset)) {
@@ -350,9 +351,14 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
 
                                 // Por cada dispositivo
                                 devices.forEach(function(element) {
-                                    result.push({dispositivo_id: element.id, nombre: element.nombre,
-                                        temperatura: element.temperatura,
-                                        url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId+
+                                    result.push({
+                                      dispositivo_id: element.id,
+                                      nombre: element.nombre,
+                                      temperatura: element.temperatura,
+                                      port: element.port,
+                                      status: element.status,
+                                      tipo: element.tipo,
+                                      url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId+
                                                 '/regulador/'+element.id});
                                 }, this);
                             }
