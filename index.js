@@ -19,10 +19,10 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
 var knex = require('knex')({
     client: 'mysql',
     connection: {
-        host: '127.0.0.1',
-        user: 'domoti-k',
-        password: 'domoti-k',
-        database: 'domoti-k'
+        host: 'us-cdbr-iron-east-04.cleardb.net',
+        user: 'b563275015a965',
+        password: 'c08e1098',
+        database: 'heroku_b965ba85a525123'
     }
 });
 
