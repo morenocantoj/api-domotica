@@ -104,7 +104,7 @@ function getCurrentUserId(user, callback) {
  * @param {*} callback function callback
  */
 function getHouse(id, callback) {
-    knex('casas').where('id', id).column('id', 'nombre')
+    knex('casas').where('id', id).column('id', 'nombre', 'direccion', 'codigo_postal', 'poblacion')
         .then(function(row) {
             // Solo es posible tener una entrada
             callback(row[0]);
@@ -519,14 +519,19 @@ router.get('/casas', checkAuth, function(req, resp) {
 
         } else {
             var userId = res.id;
-            knex('casas').select('id', 'nombre').where('user_id', userId)
+            knex('casas').select('id', 'nombre', 'poblacion', 'direccion', 'codigo_postal').where('user_id', userId)
                 .then(function(rows) {
                     if (rows) {
                         var result = [];
                         resp.status(200);
                         rows.forEach(function(element) {
-                            result.push({id: element.id, nombre: element.nombre,
-                                url: "http://"+req.headers.host+"/api/casas/"+element.id});
+                            result.push({
+                              id: element.id,
+                              nombre: element.nombre,
+                              direccion: element.direccion,
+                              poblacion: element.poblacion,
+                              codigo_postal: element.codigo_postal,
+                              url: "http://"+req.headers.host+"/api/casas/"+element.id});
                         }, this);
 
                         var json = {casas: result};
@@ -559,11 +564,19 @@ router.get('/casas/:id', function(req, resp) {
                 getControllers(houseId, function(controllers) {
 
                     controllers.forEach(function(element) {
-                        result.push({id: element.id, nombre: element.nombre,
-                            url: "http://"+req.headers.host+"/api/casas/"+houseId+"/controller/"+element.id});
+                        result.push({
+                          id: element.id,
+                          nombre: element.nombre,
+                          url: "http://"+req.headers.host+"/api/casas/"+houseId+"/controller/"+element.id});
                     }, this);
 
-                    json_result = {inmueble_id: houseId, inmueble_nombre: house.nombre, controladores: result};
+                    json_result = {
+                      inmueble_id: houseId,
+                      inmueble_nombre: house.nombre,
+                      direccion: house.direccion,
+                      poblacion: house.poblacion,
+                      codigo_postal: house.codigo_postal,
+                      controladores: result};
                     resp.status(200);
                     resp.send(json_result);
                 });
