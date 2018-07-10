@@ -215,6 +215,23 @@ function updateDevice(device_id, newValue, callback) {
 }
 
 /**
+ * Actualiza el estado de una conexion de luz
+ * @param {*} device_id
+ * @param {*} newValue
+ * @param {*} callback
+ */
+function updateLight(device_id, newValue, callback) {
+    knex('dispositivos').where('id', device_id).update('status', newValue)
+    .then(function (rows) {
+        callback(rows);
+    })
+    .catch(function (err) {
+        console.log("Error: " + err.message);
+        return false;
+    });
+}
+
+/**
  * Borra un dispositivo
  * @param {*} device_id
  * @param {*} callback
@@ -440,6 +457,55 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
         resp.status(500);
         resp.send({errMessage: "El id proporcionado no es válido"});
     }
+});
+
+// Cambiar el estado de una conexion (luz, enchufe, etc)
+router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, function(req, resp) {
+  // Cogemos el inmueble
+  var houseId = req.params.id;
+  var controllerId = req.params.controller_id;
+  var deviceId = req.params.device_id;
+  console.log("PUT /api/casas/"+houseId+"/controller/"+controllerId+"/luz/"+deviceId);
+
+  if (houseId > 0 && controllerId > 0 && deviceId > 0) {
+      getHouse(houseId, function(house) {
+          getController(controllerId, function(controller) {
+              // Actualizamos el dispositivo
+              if (house && controller) {
+                  var newStatus = req.body.status;
+
+                  // Comprobar si hay valor en el body y si la temperatura no es menor que el cero absoluto
+                  if (newStatus == null) {
+                      resp.status(400);
+                      resp.send({errMessage: "Debes especificar un estado válido para el dispositivo (true | false)"});
+
+                  } else {
+                      // Actualiza temperatura
+                      updateLight(deviceId, newStatus, function(response) {
+                          console.log("repsonse "+ response);
+                          if (response) {
+                              resp.status(200);
+                              resp.send({status: newStatus,
+                                  url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+
+                          } else {
+                              resp.status(500);
+                              resp.send({errMessage: "Ha ocurrido un problema actualizando el dispositivo"});
+                          }
+                      });
+                  }
+
+              } else {
+                  resp.status(404);
+                  resp.send({errMessage: "No se encuentra algunos de los elementos enviados"});
+              }
+          })
+      });
+  } else {
+      console.log("Error: El id no es válido");
+      resp.status(500);
+      resp.send({errMessage: "El id proporcionado no es válido"});
+  }
 });
 
 // Cambiar la temperatura de un regulador
