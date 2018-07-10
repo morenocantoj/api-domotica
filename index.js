@@ -176,15 +176,24 @@ function getController(controller_id, callback) {
  * @param {*} name
  * @param {*} callback
  */
-function insertDevice(controller, name, callback) {
-    knex('dispositivos').returning('id').insert({temperatura: 21, nombre: name, controller_id: controller})
-        .then(function (rows) {
-            callback(rows[0]);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err.message);
-            return false;
-        });
+function insertDevice(controller, name, port, type, callback) {
+  var query = knex('dispositivos').returning('id')
+
+  switch (type) {
+    case "light":
+      query = query.insert({temperatura: 0, nombre: name, tipo: type, port: port, controller_id: controller})
+      break;
+    case "clima":
+      query = query.insert({temperatura: 21, nombre: name, port: port, tipo: type, controller_id: controller})
+  }
+
+  query.then(function (rows) {
+      callback(rows[0]);
+  })
+  .catch(function (err) {
+      console.log("Error: " + err.message);
+      return false;
+  });
 }
 
 /**
@@ -389,13 +398,20 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
                         resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
 
                     } else {
-                        var nombre = req.body.nombre;
-                        if (!nombre) {
+                        var nombre = req.body.nombre
+                        var port = req.body.port
+                        var type = req.body.type
+
+                        if (!nombre || !port || !type) {
                             resp.status(400);
-                            resp.send({errMessage: "Debes especificar un nombre para el dispositivo"});
+                            resp.send({errMessage: "Debes especificar un nombre, puerto GPIO y tipo para el dispositivo"});
+
+                        } else if (type.localeCompare("light") !== 0 && type.localeCompare("clima") !== 0) {
+                          resp.status(400);
+                          resp.send({errMessage: "Debes especificar un tipo adecuado para el dispositivo. Los soportados son light y clima"});
 
                         } else {
-                            insertDevice(controllerId, nombre, function (response) {
+                            insertDevice(controllerId, nombre, port, type, function (response) {
                                 if (response) {
                                   console.log(response);
                                     resp.status(201);
