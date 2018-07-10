@@ -23,7 +23,8 @@ var knex = require('knex')({
         user: 'b563275015a965',
         password: 'c08e1098',
         database: 'heroku_b965ba85a525123'
-    }
+    },
+    acquireConnectionTimeout: 10000
 });
 
 // Metodo de login
