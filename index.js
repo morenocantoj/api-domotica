@@ -6,6 +6,9 @@ var moment = require('moment'); // Fechas
 var url = require('url');
 var cors = require('cors');
 
+const SocketServer = require('ws').Server;
+var connectedUsers = new Map()
+
 var app = express();
 app.use(cors());
 var port = 3000;
@@ -16,13 +19,24 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
 
-var knex = require('knex')({
+/*var knex = require('knex')({
     client: 'mysql',
     connection: {
         host: 'us-cdbr-iron-east-04.cleardb.net',
         user: 'b563275015a965',
         password: 'c08e1098',
         database: 'heroku_b965ba85a525123'
+    },
+    acquireConnectionTimeout: 10000
+});*/
+
+var knex = require('knex')({
+    client: 'mysql',
+    connection: {
+        host: '127.0.0.1',
+        user: 'domoti-k',
+        password: 'domoti-k',
+        database: 'domoti-k'
     },
     acquireConnectionTimeout: 10000
 });
@@ -149,6 +163,19 @@ function getDevices(controller_id, offset, callback) {
 
   query.then(function (rows) {
       callback(rows);
+  })
+  .catch(function (err) {
+      console.log("Error: " + err.message);
+      return false;
+  })
+}
+
+function getDevice(deviceId, callback) {
+  var query = knex('dispositivos').where('id', deviceId).column('id', 'nombre', 'temperatura',
+  'tipo', 'port', 'status')
+
+  query.then(function (rows) {
+      callback(rows[0]);
   })
   .catch(function (err) {
       console.log("Error: " + err.message);
@@ -481,19 +508,26 @@ router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, fun
                       resp.send({errMessage: "Debes especificar un estado válido para el dispositivo (true | false)"});
 
                   } else {
-                      // Actualiza temperatura
-                      updateLight(deviceId, newStatus, function(response) {
-                          console.log("repsonse "+ response);
-                          if (response) {
-                              resp.status(200);
-                              resp.send({status: newStatus,
-                                  url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+                      getDevice(deviceId, function (response) {
+                        // Actualiza luz en raspberry
+                        var ws = connectedUsers.get(controllerId)
+                        console.log(response)
+                        ws.send(response.port)
 
-                          } else {
-                              resp.status(500);
-                              resp.send({errMessage: "Ha ocurrido un problema actualizando el dispositivo"});
-                          }
-                      });
+                        // Actualiza luz en BBDD
+                        updateLight(deviceId, newStatus, function(response) {
+                            console.log("repsonse "+ response);
+                            if (response) {
+                                resp.status(200);
+                                resp.send({status: newStatus,
+                                    url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+
+                            } else {
+                                resp.status(500);
+                                resp.send({errMessage: "Ha ocurrido un problema actualizando el dispositivo"});
+                            }
+                        });
+                      })
                   }
 
               } else {
@@ -705,5 +739,22 @@ router.post('/login', function(req, resp) {
 module.exports = app;
 
 // Arranque del servidor
-app.listen(process.env.PORT || port);
+var server = app.listen(process.env.PORT || port);
+const wss = new SocketServer({ server });
+
+//init Websocket ws and handle incoming connect requests
+wss.on('connection', function connection(ws) {
+    console.log("connection ...");
+
+    //on connect message
+    ws.on('message', function incoming(message) {
+        // Conectamos una conexion con el ID de raspberry
+        if (message == "1") {
+            connectedUsers.set(message, ws)
+        }
+    });
+
+    ws.send('message from server at: ' + new Date());
+});
+
 console.log("Escuchando por el puerto " + port);
