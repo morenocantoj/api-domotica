@@ -295,6 +295,27 @@ function insertProgramation(device_id, controller_id, date, action, callback) {
         })
 }
 
+/**
+* Update a light through Websocket communication
+* @param device affected device
+* @param controllerId raspian controller
+* @param newStatus new value status
+*/
+function updateLightWS(device, controllerId, newStatus) {
+  console.log("Actualizando luz en Raspian...")
+
+  // Cogemos la conexion establecida
+  var ws = connectedUsers.get(controllerId)
+  var newLight = JSON.stringify({
+    'action': 'light',
+    'port': device.port,
+    'value': newStatus
+  })
+
+  // Enviamos nuevas instrucciones a raspian
+  ws.send(newLight)
+}
+
 // Enrutador
 var router = express.Router();
 
@@ -509,10 +530,9 @@ router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, fun
 
                   } else {
                       getDevice(deviceId, function (response) {
+
                         // Actualiza luz en raspberry
-                        var ws = connectedUsers.get(controllerId)
-                        console.log(response)
-                        ws.send(response.port)
+                        updateLightWS(response, controllerId, newStatus)
 
                         // Actualiza luz en BBDD
                         updateLight(deviceId, newStatus, function(response) {
@@ -749,12 +769,27 @@ wss.on('connection', function connection(ws) {
     //on connect message
     ws.on('message', function incoming(message) {
         // Conectamos una conexion con el ID de raspberry
-        if (message == "1") {
-            connectedUsers.set(message, ws)
+        message = JSON.parse(message)
+
+        switch (message.type) {
+          case 'CLOSE':
+            // Liberate space
+            console.log("Liberando controlador...")
+            connectedUsers.delete(message.msg)
+            break;
+          case 'CONNECTION':
+            // Connect Raspian
+            console.log("Conectando controlador...")
+            connectedUsers.set(message.msg, ws)
+          default:
+            console.log("No se reconoce la expresion")
         }
     });
 
-    ws.send('message from server at: ' + new Date());
+    ws.on('close', function(connection) {
+      // Close connection
+      console.log("Conexion cerrada desde Raspian")
+    })
 });
 
 console.log("Escuchando por el puerto " + port);
