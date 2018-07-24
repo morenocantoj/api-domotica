@@ -6,6 +6,9 @@ var moment = require('moment'); // Fechas
 var url = require('url');
 var cors = require('cors');
 
+const SocketServer = require('ws').Server;
+var connectedUsers = new Map()
+
 var app = express();
 app.use(cors());
 var port = 3000;
@@ -16,13 +19,24 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
 
-var knex = require('knex')({
+/*var knex = require('knex')({
     client: 'mysql',
     connection: {
         host: 'us-cdbr-iron-east-04.cleardb.net',
         user: 'b563275015a965',
         password: 'c08e1098',
         database: 'heroku_b965ba85a525123'
+    },
+    acquireConnectionTimeout: 10000
+});*/
+
+var knex = require('knex')({
+    client: 'mysql',
+    connection: {
+        host: '127.0.0.1',
+        user: 'domoti-k',
+        password: 'domoti-k',
+        database: 'domoti-k'
     },
     acquireConnectionTimeout: 10000
 });
@@ -156,6 +170,19 @@ function getDevices(controller_id, offset, callback) {
   })
 }
 
+function getDevice(deviceId, callback) {
+  var query = knex('dispositivos').where('id', deviceId).column('id', 'nombre', 'temperatura',
+  'tipo', 'port', 'status')
+
+  query.then(function (rows) {
+      callback(rows[0]);
+  })
+  .catch(function (err) {
+      console.log("Error: " + err.message);
+      return false;
+  })
+}
+
 /**
  * Devuelve un controlador asociado a una casa con todos sus dispositivos
  * @param {*} controller_id
@@ -266,6 +293,27 @@ function insertProgramation(device_id, controller_id, date, action, callback) {
             console.log("Error: " + err.message);
             callback(false);
         })
+}
+
+/**
+* Update a light through Websocket communication
+* @param device affected device
+* @param controllerId raspian controller
+* @param newStatus new value status
+*/
+function updateLightWS(device, controllerId, newStatus) {
+  console.log("Actualizando luz en Raspian...")
+
+  // Cogemos la conexion establecida
+  var ws = connectedUsers.get(controllerId)
+  var newLight = JSON.stringify({
+    'action': 'light',
+    'port': device.port,
+    'value': newStatus
+  })
+
+  // Enviamos nuevas instrucciones a raspian
+  ws.send(newLight)
 }
 
 // Enrutador
@@ -481,19 +529,25 @@ router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, fun
                       resp.send({errMessage: "Debes especificar un estado válido para el dispositivo (true | false)"});
 
                   } else {
-                      // Actualiza temperatura
-                      updateLight(deviceId, newStatus, function(response) {
-                          console.log("repsonse "+ response);
-                          if (response) {
-                              resp.status(200);
-                              resp.send({status: newStatus,
-                                  url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+                      getDevice(deviceId, function (response) {
 
-                          } else {
-                              resp.status(500);
-                              resp.send({errMessage: "Ha ocurrido un problema actualizando el dispositivo"});
-                          }
-                      });
+                        // Actualiza luz en raspberry
+                        updateLightWS(response, controllerId, newStatus)
+
+                        // Actualiza luz en BBDD
+                        updateLight(deviceId, newStatus, function(response) {
+                            console.log("repsonse "+ response);
+                            if (response) {
+                                resp.status(200);
+                                resp.send({status: newStatus,
+                                    url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+
+                            } else {
+                                resp.status(500);
+                                resp.send({errMessage: "Ha ocurrido un problema actualizando el dispositivo"});
+                            }
+                        });
+                      })
                   }
 
               } else {
@@ -705,5 +759,37 @@ router.post('/login', function(req, resp) {
 module.exports = app;
 
 // Arranque del servidor
-app.listen(process.env.PORT || port);
+var server = app.listen(process.env.PORT || port);
+const wss = new SocketServer({ server });
+
+//init Websocket ws and handle incoming connect requests
+wss.on('connection', function connection(ws) {
+    console.log("connection ...");
+
+    //on connect message
+    ws.on('message', function incoming(message) {
+        // Conectamos una conexion con el ID de raspberry
+        message = JSON.parse(message)
+
+        switch (message.type) {
+          case 'CLOSE':
+            // Liberate space
+            console.log("Liberando controlador...")
+            connectedUsers.delete(message.msg)
+            break;
+          case 'CONNECTION':
+            // Connect Raspian
+            console.log("Conectando controlador...")
+            connectedUsers.set(message.msg, ws)
+          default:
+            console.log("No se reconoce la expresion")
+        }
+    });
+
+    ws.on('close', function(connection) {
+      // Close connection
+      console.log("Conexion cerrada desde Raspian")
+    })
+});
+
 console.log("Escuchando por el puerto " + port);
