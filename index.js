@@ -19,7 +19,7 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
 
-/*var knex = require('knex')({
+var knex = require('knex')({
     client: 'mysql',
     connection: {
         host: 'us-cdbr-iron-east-04.cleardb.net',
@@ -28,9 +28,9 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
         database: 'heroku_b965ba85a525123'
     },
     acquireConnectionTimeout: 10000
-});*/
+});
 
-var knex = require('knex')({
+/*var knex = require('knex')({
     client: 'mysql',
     connection: {
         host: '127.0.0.1',
@@ -39,7 +39,7 @@ var knex = require('knex')({
         database: 'domoti-k'
     },
     acquireConnectionTimeout: 10000
-});
+});*/
 
 // Metodo de login
 function login(login, password, callback) {
