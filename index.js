@@ -283,12 +283,11 @@ function getProgramationType(deviceId, action, date, callback) {
   actionSplit = action.split(" ")
 
   getDevice(deviceId, function (device) {
-    console.log(actionSplit)
     switch (actionSplit[1]) {
       case "light":
-        console.log("LIGHT!")
         json = {
           'action': 'programation',
+          'device': actionSplit[1],
           'port': device.port,
           'date': date,
           'value': actionSplit[2] == 'ON' ? true : false,
@@ -299,6 +298,7 @@ function getProgramationType(deviceId, action, date, callback) {
         console.log("Clima programation not implemented yet!")
         json = JSON.stringify({
           'action': 'programation',
+          'device': actionSplit[1],
           'value': 'NOT_IMPLEMENTED'
         })
         break;
@@ -325,8 +325,6 @@ function getProgramationType(deviceId, action, date, callback) {
  */
 function insertProgramation(device_id, controller_id, date, action, callback) {
   getProgramationType(device_id, action, date, function (newProgramation) {
-    console.log(newProgramation)
-
     // Cogemos la conexion establecida
     var ws = connectedUsers.get(controller_id)
 
