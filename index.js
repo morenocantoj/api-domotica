@@ -19,7 +19,7 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
 
-var knex = require('knex')({
+/*var knex = require('knex')({
     client: 'mysql',
     connection: {
         host: 'us-cdbr-iron-east-04.cleardb.net',
@@ -28,9 +28,9 @@ var knex = require('knex')({
         database: 'heroku_b965ba85a525123'
     },
     acquireConnectionTimeout: 10000
-});
+});*/
 
-/*var knex = require('knex')({
+var knex = require('knex')({
     client: 'mysql',
     connection: {
         host: '127.0.0.1',
@@ -39,7 +39,7 @@ var knex = require('knex')({
         database: 'domoti-k'
     },
     acquireConnectionTimeout: 10000
-});*/
+});
 
 // Metodo de login
 function login(login, password, callback) {
@@ -276,14 +276,61 @@ function deleteDevice(device_id, callback) {
 }
 
 /**
+  @param deviceId
+  @param action
+ */
+function getProgramationType(deviceId, action, date, callback) {
+  actionSplit = action.split(" ")
+
+  getDevice(deviceId, function (device) {
+    switch (actionSplit[1]) {
+      case "light":
+        json = {
+          'action': 'programation',
+          'device': actionSplit[1],
+          'port': device.port,
+          'date': date,
+          'value': actionSplit[2] == 'ON' ? true : false,
+          'log': actionSplit[2] == 'ON' ? 'Dispositivo '+device.nombre+' activado' : 'Dispositivo '+device.nombre+' desactivado'
+        }
+        break;
+      case "clima":
+        console.log("Clima programation not implemented yet!")
+        json = JSON.stringify({
+          'action': 'programation',
+          'device': actionSplit[1],
+          'value': 'NOT_IMPLEMENTED'
+        })
+        break;
+      default:
+        console.log("Not implemented yet!")
+        json = JSON.stringify({
+          'action': 'programation',
+          'value': "NOT_IMPLEMENTED"
+        })
+    }
+
+    return callback(json)
+  })
+}
+
+/**
  * Inserts a programation into a device
  * @param {*} device_id
  * @param {*} controller_id
  * @param {*} date
  * @param {*} action
  * @param {*} callback
+ * @param {*} ws
  */
 function insertProgramation(device_id, controller_id, date, action, callback) {
+  getProgramationType(device_id, action, date, function (newProgramation) {
+    // Cogemos la conexion establecida
+    var ws = connectedUsers.get(controller_id)
+
+    // Envio de nueva programacion
+    ws.send(JSON.stringify(newProgramation))
+
     knex('programaciones').insert({fecha: date, action: action, controller_id: controller_id, dispositivo_id: device_id})
         .returning('id')
         .then(function (row) {
@@ -293,6 +340,7 @@ function insertProgramation(device_id, controller_id, date, action, callback) {
             console.log("Error: " + err.message);
             callback(false);
         })
+  })
 }
 
 /**
@@ -781,6 +829,10 @@ wss.on('connection', function connection(ws) {
             // Connect Raspian
             console.log("Conectando controlador...")
             connectedUsers.set(message.msg, ws)
+            break;
+          case 'PING':
+            // Keep alive the connection!
+            break;
           default:
             console.log("No se reconoce la expresion")
         }
