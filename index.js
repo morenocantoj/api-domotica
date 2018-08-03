@@ -5,6 +5,7 @@ var jwt = require('jwt-simple');
 var moment = require('moment'); // Fechas
 var url = require('url');
 var cors = require('cors');
+var bcrypt = require('bcryptjs');
 
 const SocketServer = require('ws').Server;
 var connectedUsers = new Map()
@@ -65,6 +66,27 @@ function login(login, password, callback) {
             console.log("Error: " + err.message);
             callback(false);
         });
+}
+
+/**
+* Registro de un nuevo usuario
+* @param login nombre de usuario
+* @param
+*/
+function register(login, password, callback) {
+  var query = knex('usuarios').returning('id')
+
+  passwordHash = bcrypt.hashSync(password, 8);
+
+  query.insert({login: login, password: passwordHash})
+  .then(function (id) {
+    console.log("Usuario "+login+" registrado correctamente en la aplicacion")
+    callback(id)
+  })
+  .catch(function (err) {
+    console.log("Error: " + err)
+    callback(null)
+  })
 }
 
 // User para las SELECT
@@ -800,6 +822,27 @@ router.post('/login', function(req, resp) {
             resp.send({token: token});
         }
     });
+})
+
+router.post('/register', function(req, resp) {
+  var loginName = req.body.login.toLowerCase();
+  var password = req.body.password;
+
+  // Check minimun register fields
+  if (loginName.length > 4 && password.length > 4) {
+    register(loginName, password, function(result) {
+      if (result != null) {
+        resp.status(201);
+        resp.send({message: "Registro completado"});
+      } else {
+        resp.status(500);
+        resp.send({errMessage: "¡Error al realizar el registro!"});
+      }
+    });
+  } else {
+    resp.status(400);
+    resp.send({errMessage: "El nombre de usuario y contraseña deben tener una longitud superior a 4 caracteres"});
+  }
 })
 
 /* -- /RUTAS -- */
