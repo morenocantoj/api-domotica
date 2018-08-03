@@ -45,10 +45,10 @@ var knex = require('knex')({
 // Metodo de login
 function login(login, password, callback) {
 
-    knex('usuarios').where({login: login, password: password}).select('login', 'password')
+    knex('usuarios').where({login: login}).select('login', 'password')
         .then(function (row) {
-            console.log(row);
-            if (row[0].login.toLowerCase() === login && row[0].password === password) {
+          console.log(row)
+            if (row[0].login.toLowerCase() === login && bcrypt.compareSync(password, row[0].password)) {
                 console.log("Login usuario correcto: " + login);
 
                 var payload = {
@@ -63,7 +63,8 @@ function login(login, password, callback) {
             }
         })
         .catch(function (err) {
-            console.log("Error: " + err.message);
+            console.log("Error: ");
+            console.log(err)
             callback(false);
         });
 }
@@ -71,7 +72,8 @@ function login(login, password, callback) {
 /**
 * Registro de un nuevo usuario
 * @param login nombre de usuario
-* @param
+* @param password contraseña a hashear
+* @param callback funcion callback
 */
 function register(login, password, callback) {
   var query = knex('usuarios').returning('id')
