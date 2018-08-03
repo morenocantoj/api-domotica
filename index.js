@@ -80,14 +80,25 @@ function register(login, password, callback) {
 
   passwordHash = bcrypt.hashSync(password, 8);
 
-  query.insert({login: login, password: passwordHash})
-  .then(function (id) {
-    console.log("Usuario "+login+" registrado correctamente en la aplicacion")
-    callback(id)
-  })
-  .catch(function (err) {
-    console.log("Error: " + err)
-    callback(null)
+  // Check si usuario existe ya
+  knex('usuarios').where({login: login}).select('login')
+  .then(function (row) {
+    
+    if (row.length == 0) {
+      query.insert({login: login, password: passwordHash})
+      .then(function (id) {
+        console.log("Usuario "+login+" registrado correctamente en la aplicacion")
+        callback(id)
+      })
+      .catch(function (err) {
+        console.log("Error: " + err)
+        callback(null)
+      })
+
+    } else {
+      // User existente
+      callback(false)
+    }
   })
 }
 
@@ -833,14 +844,21 @@ router.post('/register', function(req, resp) {
   // Check minimun register fields
   if (loginName.length > 4 && password.length > 4) {
     register(loginName, password, function(result) {
-      if (result != null) {
+      if (!result) {
+        // User ya existente
+        resp.status(406);
+        resp.send({errMessage: "Usuario ya existente en la base de datos"});
+
+      } else if (result != null) {
         resp.status(201);
         resp.send({message: "Registro completado"});
+
       } else {
         resp.status(500);
         resp.send({errMessage: "¡Error al realizar el registro!"});
       }
     });
+
   } else {
     resp.status(400);
     resp.send({errMessage: "El nombre de usuario y contraseña deben tener una longitud superior a 4 caracteres"});
