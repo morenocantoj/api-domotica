@@ -5,6 +5,7 @@ var jwt = require('jwt-simple');
 var moment = require('moment'); // Fechas
 var url = require('url');
 var cors = require('cors');
+var bcrypt = require('bcryptjs');
 
 const SocketServer = require('ws').Server;
 var connectedUsers = new Map()
@@ -44,14 +45,14 @@ var knex = require('knex')({
 // Metodo de login
 function login(login, password, callback) {
 
-    knex('usuarios').where({login: login, password: password}).select('login', 'password')
+    knex('usuarios').where({login: login}).select('login', 'password')
         .then(function (row) {
-            console.log(row);
-            if (row[0].login === login && row[0].password === password) {
+          console.log(row)
+            if (row[0].login.toLowerCase() === login && bcrypt.compareSync(password, row[0].password)) {
                 console.log("Login usuario correcto: " + login);
 
                 var payload = {
-                    login: login,
+                    login: row[0].login,
                     exp: moment().add(7, 'days').valueOf()
                 }
                 var token = jwt.encode(payload, secret);
@@ -62,9 +63,43 @@ function login(login, password, callback) {
             }
         })
         .catch(function (err) {
-            console.log("Error: " + err.message);
+            console.log("Error: ");
+            console.log(err)
             callback(false);
         });
+}
+
+/**
+* Registro de un nuevo usuario
+* @param login nombre de usuario
+* @param password contraseña a hashear
+* @param callback funcion callback
+*/
+function register(login, password, callback) {
+  var query = knex('usuarios').returning('id')
+
+  passwordHash = bcrypt.hashSync(password, 8);
+
+  // Check si usuario existe ya
+  knex('usuarios').where({login: login}).select('login')
+  .then(function (row) {
+    
+    if (row.length == 0) {
+      query.insert({login: login, password: passwordHash})
+      .then(function (id) {
+        console.log("Usuario "+login+" registrado correctamente en la aplicacion")
+        callback(id)
+      })
+      .catch(function (err) {
+        console.log("Error: " + err)
+        callback(null)
+      })
+
+    } else {
+      // User existente
+      callback(false)
+    }
+  })
 }
 
 // User para las SELECT
@@ -784,7 +819,7 @@ router.get('/casas/:id', function(req, resp) {
 // Autenticacion
 router.post('/login', function(req, resp) {
 
-    var loginName = req.body.login;
+    var loginName = req.body.login.toLowerCase();
     var password = req.body.password;
 
     login(loginName, password, function(result) {
@@ -800,6 +835,34 @@ router.post('/login', function(req, resp) {
             resp.send({token: token});
         }
     });
+})
+
+router.post('/register', function(req, resp) {
+  var loginName = req.body.login.toLowerCase();
+  var password = req.body.password;
+
+  // Check minimun register fields
+  if (loginName.length > 4 && password.length > 4) {
+    register(loginName, password, function(result) {
+      if (!result) {
+        // User ya existente
+        resp.status(406);
+        resp.send({errMessage: "Usuario ya existente en la base de datos"});
+
+      } else if (result != null) {
+        resp.status(201);
+        resp.send({message: "Registro completado"});
+
+      } else {
+        resp.status(500);
+        resp.send({errMessage: "¡Error al realizar el registro!"});
+      }
+    });
+
+  } else {
+    resp.status(400);
+    resp.send({errMessage: "El nombre de usuario y contraseña deben tener una longitud superior a 4 caracteres"});
+  }
 })
 
 /* -- /RUTAS -- */
