@@ -47,11 +47,11 @@ function login(login, password, callback) {
     knex('usuarios').where({login: login, password: password}).select('login', 'password')
         .then(function (row) {
             console.log(row);
-            if (row[0].login === login && row[0].password === password) {
+            if (row[0].login.toLowerCase() === login && row[0].password === password) {
                 console.log("Login usuario correcto: " + login);
 
                 var payload = {
-                    login: login,
+                    login: row[0].login,
                     exp: moment().add(7, 'days').valueOf()
                 }
                 var token = jwt.encode(payload, secret);
@@ -784,7 +784,7 @@ router.get('/casas/:id', function(req, resp) {
 // Autenticacion
 router.post('/login', function(req, resp) {
 
-    var loginName = req.body.login;
+    var loginName = req.body.login.toLowerCase();
     var password = req.body.password;
 
     login(loginName, password, function(result) {
