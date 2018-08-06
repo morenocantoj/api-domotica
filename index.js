@@ -25,7 +25,7 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
 }));
 
 // Environment BBDD credentials
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV === 'development') {
   var knex = require('knex')({
       client: 'mysql',
       connection: {
