@@ -1,0 +1,13 @@
+language: node_js
+node_js:
+  - "7"
+services:
+  - mysql
+before_install:
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
+  - mysql -u root --default-character-set=utf8 test < test/bd.sql
+deploy:
+  provider: heroku
+  api_key: 87824981-5559-4c57-bf72-9d07c51df180
+  app: mighty-reef-55430
+  on: master
