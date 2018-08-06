@@ -22,8 +22,6 @@ SET time_zone = "+00:00";
 -- Base de datos: `test`
 --
 
-CREATE DATABASE IF NOT EXISTS test;
-
 -- --------------------------------------------------------
 
 --
