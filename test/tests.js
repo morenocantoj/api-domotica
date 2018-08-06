@@ -4,17 +4,6 @@ var assert = require('assert');
 
 var token = "";
 
-var knex = require('knex')({
-    client: 'mysql',
-    connection: {
-        host: '127.0.0.1',
-        user: 'root',
-        password: '',
-        database: 'test'
-    },
-    acquireConnectionTimeout: 10000
-});
-
 describe('Suite de pruebas de la API REST domotica', function() {
     it('GET / OK', function(done) {
         supertest(app)

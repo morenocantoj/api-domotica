@@ -1,6 +1,8 @@
 language: node_js
 node_js:
   - "7"
+env:
+    - NODE_ENV='test'
 services:
   - mysql
 before_install:
