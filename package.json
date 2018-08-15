@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha",
+    "test":
+      "/Applications/XAMPP/bin/mysql -u root --password='' -e 'DROP DATABASE IF EXISTS domotik;' && /Applications/XAMPP/bin/mysql -u root --password='' -e 'CREATE DATABASE IF NOT EXISTS domotik;' && /Applications/XAMPP/bin/mysql -u root --password='' domotik < ./domotik.sql && mocha --exit",
     "start": "node index.js"
   },
   "author": "",
@@ -17,6 +18,7 @@
     "dotenv": "^6.0.0",
     "express": "^4.15.4",
     "express-session": "^1.15.6",
+    "file-system": "^2.2.2",
     "jwt-simple": "^0.5.1",
     "knex": "^0.15.2",
     "moment": "^2.19.1",

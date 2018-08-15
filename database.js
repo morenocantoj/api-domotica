@@ -10,20 +10,24 @@ return module.exports = {
 
       knex('usuarios').where({login: login}).select('login', 'password')
           .then(function (row) {
-            console.log(row)
-              if (row[0].login.toLowerCase() === login && bcrypt.compareSync(password, row[0].password)) {
-                  console.log("Login usuario correcto: " + login);
+            // Check if user exists
+            if (row.length <= 0) {
+              return callback(false)
+            }
+            // Check if password matches
+            if (row[0].login.toLowerCase() === login && bcrypt.compareSync(password, row[0].password)) {
+                console.log("Login usuario correcto: " + login);
 
-                  var payload = {
-                      login: row[0].login,
-                      exp: moment().add(7, 'days').valueOf()
-                  }
-                  var token = jwt.encode(payload, secret);
-                  return callback(token);
-              } else {
-                  console.log("Login no correcto");
-                  return callback(false)
-              }
+                var payload = {
+                    login: row[0].login,
+                    exp: moment().add(7, 'days').valueOf()
+                }
+                var token = jwt.encode(payload, secret);
+                return callback(token);
+            } else {
+                console.log("Login no correcto");
+                return callback(false)
+            }
           })
           .catch(function (err) {
               console.log("Error: ");
@@ -280,7 +284,7 @@ return module.exports = {
     module.exports.getDevice(knex, device_id, function(device) {
 
       helpers.getProgramationType(device, action, date, function (newProgramation) {
-        
+
         // Cogemos la conexion establecida
         var ws = connectedUsers.get(controller_id)
 

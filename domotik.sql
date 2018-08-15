@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: localhost
--- Tiempo de generación: 10-07-2018 a las 20:27:19
+-- Tiempo de generación: 15-08-2018 a las 19:22:38
 -- Versión del servidor: 10.1.31-MariaDB
 -- Versión de PHP: 7.1.16
 
@@ -19,7 +19,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `domoti-k`
+-- Base de datos: `domotik`
 --
 
 -- --------------------------------------------------------
@@ -91,7 +91,6 @@ CREATE TABLE `dispositivos` (
 --
 
 INSERT INTO `dispositivos` (`id`, `port`, `tipo`, `temperatura`, `status`, `nombre`, `controller_id`) VALUES
-(1, NULL, 'clima', '21', 0, 'Mitsubishi INVERTER', 1),
 (2, NULL, 'light', '0', 0, 'Luz 220W izquierda', 1),
 (3, NULL, 'light', '0', 0, 'Luz 220W derecha', 1),
 (5, NULL, 'clima', '23', 0, 'Fujitsu Silent', 1),
@@ -139,7 +138,8 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `login`, `password`) VALUES
-(1, 'morenocantoj', 'elfaryvive');
+(1, 'morenocantoj', '$2a$08$nBvHah3PNghJ704qwPsAMOSYw6irNYF895Tcg5/VpuqVpB9TyUsd.'),
+(2, 'elfary', '$2a$08$0OCa8W78MgXJbH9NG2RjYOOlOJqqodkfVQmXiyUzzax4WHn/VFj7W');
 
 --
 -- Índices para tablas volcadas
@@ -212,7 +212,7 @@ ALTER TABLE `programaciones`
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Restricciones para tablas volcadas

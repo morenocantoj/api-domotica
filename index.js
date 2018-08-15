@@ -30,9 +30,9 @@ if (process.env.NODE_ENV === 'development') {
       client: 'mysql',
       connection: {
           host: '127.0.0.1',
-          user: 'domoti-k',
-          password: 'domoti-k',
-          database: 'domoti-k'
+          user: 'domotik',
+          password: 'domotik',
+          database: 'domotik'
       },
       acquireConnectionTimeout: 10000
   });
