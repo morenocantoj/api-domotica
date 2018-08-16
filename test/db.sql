@@ -91,15 +91,14 @@ CREATE TABLE `dispositivos` (
 --
 
 INSERT INTO `dispositivos` (`id`, `port`, `tipo`, `temperatura`, `status`, `nombre`, `controller_id`) VALUES
-(1, NULL, 'clima', '23', 0, 'Mitsubishi INVERTER', 1),
+(2, NULL, 'light', '0', 0, 'Luz 220W izquierda', 1),
+(3, NULL, 'light', '0', 0, 'Luz 220W derecha', 1),
 (5, NULL, 'clima', '23', 0, 'Fujitsu Silent', 1),
 (6, NULL, '', '21', 0, 'Fujitsu Silent', 1),
 (7, NULL, '', '21', 0, 'Fujitsu Silent', 1),
 (8, NULL, '', '21', 0, 'Fujitsu Silent', 1),
-(9, '13', 'light', '0', 0, 'Bombilla man', 1),
-(10, '15', 'clima', '21', 0, 'Aire man', 1),
-(11, '22', 'light', '0', 0, 'Luz', 1),
-(13, '21', 'light', '0', 0, 'Luz verde derecha', 1);
+(9, NULL, 'light', '0', 1, 'Bombilla man', 1),
+(10, '15', 'clima', '21', 0, 'Aire man', 1);
 
 -- --------------------------------------------------------
 

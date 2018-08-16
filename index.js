@@ -5,7 +5,11 @@ var jwt = require('jwt-simple');
 var moment = require('moment'); // Fechas
 var url = require('url');
 var cors = require('cors');
-var bcrypt = require('bcryptjs');
+var db = require('./database.js')
+var helpers = require('./helpers.js')
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').load();
+}
 
 const SocketServer = require('ws').Server;
 var connectedUsers = new Map()
@@ -20,86 +24,40 @@ app.use(bodyparser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
 
-/*var knex = require('knex')({
-    client: 'mysql',
-    connection: {
-        host: 'us-cdbr-iron-east-04.cleardb.net',
-        user: 'b563275015a965',
-        password: 'c08e1098',
-        database: 'heroku_b965ba85a525123'
-    },
-    acquireConnectionTimeout: 10000
-});*/
-
-var knex = require('knex')({
-    client: 'mysql',
-    connection: {
-        host: '127.0.0.1',
-        user: 'domoti-k',
-        password: 'domoti-k',
-        database: 'domoti-k'
-    },
-    acquireConnectionTimeout: 10000
-});
-
-// Metodo de login
-function login(login, password, callback) {
-
-    knex('usuarios').where({login: login}).select('login', 'password')
-        .then(function (row) {
-          console.log(row)
-            if (row[0].login.toLowerCase() === login && bcrypt.compareSync(password, row[0].password)) {
-                console.log("Login usuario correcto: " + login);
-
-                var payload = {
-                    login: row[0].login,
-                    exp: moment().add(7, 'days').valueOf()
-                }
-                var token = jwt.encode(payload, secret);
-                callback(token);
-            } else {
-                console.log("Login no correcto");
-                callback(false)
-            }
-        })
-        .catch(function (err) {
-            console.log("Error: ");
-            console.log(err)
-            callback(false);
-        });
-}
-
-/**
-* Registro de un nuevo usuario
-* @param login nombre de usuario
-* @param password contraseña a hashear
-* @param callback funcion callback
-*/
-function register(login, password, callback) {
-  var query = knex('usuarios').returning('id')
-
-  passwordHash = bcrypt.hashSync(password, 8);
-
-  // Check si usuario existe ya
-  knex('usuarios').where({login: login}).select('login')
-  .then(function (row) {
-    
-    if (row.length == 0) {
-      query.insert({login: login, password: passwordHash})
-      .then(function (id) {
-        console.log("Usuario "+login+" registrado correctamente en la aplicacion")
-        callback(id)
-      })
-      .catch(function (err) {
-        console.log("Error: " + err)
-        callback(null)
-      })
-
-    } else {
-      // User existente
-      callback(false)
-    }
-  })
+// Environment BBDD credentials
+if (process.env.NODE_ENV === 'development') {
+  var knex = require('knex')({
+      client: 'mysql',
+      connection: {
+          host: '127.0.0.1',
+          user: 'domotik',
+          password: 'domotik',
+          database: 'domotik'
+      },
+      acquireConnectionTimeout: 10000
+  });
+} else if (process.env.NODE_ENV === 'test') {
+  var knex = require('knex')({
+      client: 'mysql',
+      connection: {
+          host: '127.0.0.1',
+          user: 'root',
+          password: '',
+          database: 'test'
+      },
+      acquireConnectionTimeout: 10000
+  });
+} else {
+  var knex = require('knex')({
+      client: 'mysql',
+      connection: {
+          host: 'us-cdbr-iron-east-04.cleardb.net',
+          user: 'b563275015a965',
+          password: 'c08e1098',
+          database: 'heroku_b965ba85a525123'
+      },
+      acquireConnectionTimeout: 10000
+  });
 }
 
 // User para las SELECT
@@ -131,274 +89,6 @@ function checkAuth(req, resp, next) {
     }
 }
 
-/**
- * Consigue el ID del usuario actual comprobando el token
- * @param {*} token token pasado por parametro
- * @param {*} callback function callback
- */
-function getCurrentUserId(user, callback) {
-    knex('usuarios').where('login', user).column('id')
-        .then(function (row) {
-            user = row[0];
-            callback(user);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err);
-            return false;
-        });
-}
-
-/**
- * Devuelve todos los datos de una casa
- * @param {*} id de la casa
- * @param {*} callback function callback
- */
-function getHouse(id, callback) {
-    knex('casas').where('id', id).column('id', 'nombre', 'direccion', 'codigo_postal', 'poblacion')
-        .then(function(row) {
-            // Solo es posible tener una entrada
-            callback(row[0]);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err);
-            return false;
-        })
-}
-
-/**
- * Devuelve todos los controladores de una casa
- * @param {*} house_id
- * @param {*} callback
- */
-function getControllers(house_id, callback) {
-    knex('controladores').where('casa_id', house_id).column('id', 'nombre')
-        .then(function (rows) {
-            callback(rows);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err);
-            return false;
-        })
-}
-
-/**
- * Devuelve todos los dispositivos asociados a un controlador
- * @param {*} controller_id
- * @param {*} callback
- */
-function getDevices(controller_id, offset, callback) {
-  var limit = 5;
-  var query = knex('dispositivos').where('controller_id', controller_id).column('id', 'nombre', 'temperatura',
-  'tipo', 'port', 'status')
-
-  // If client wants to paginate
-  if (!isNaN(offset)) {
-    query = query.limit(limit).offset(offset*5)
-  }
-
-  query.then(function (rows) {
-      callback(rows);
-  })
-  .catch(function (err) {
-      console.log("Error: " + err.message);
-      return false;
-  })
-}
-
-function getDevice(deviceId, callback) {
-  var query = knex('dispositivos').where('id', deviceId).column('id', 'nombre', 'temperatura',
-  'tipo', 'port', 'status')
-
-  query.then(function (rows) {
-      callback(rows[0]);
-  })
-  .catch(function (err) {
-      console.log("Error: " + err.message);
-      return false;
-  })
-}
-
-/**
- * Devuelve un controlador asociado a una casa con todos sus dispositivos
- * @param {*} controller_id
- * @param {*} callback
- */
-function getController(controller_id, callback) {
-    knex('controladores').where('id', controller_id).column('id', 'nombre', 'casa_id')
-        .then(function (rows) {
-            callback(rows[0]);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err.message);
-            return false;
-        });
-}
-
-/**
- * Inserta un dispositivo en un controlador de una casa
- * @param {*} controller
- * @param {*} name
- * @param {*} callback
- */
-function insertDevice(controller, name, port, type, callback) {
-  var query = knex('dispositivos').returning('id')
-
-  switch (type) {
-    case "light":
-      query = query.insert({temperatura: 0, nombre: name, tipo: type, port: port, controller_id: controller})
-      break;
-    case "clima":
-      query = query.insert({temperatura: 21, nombre: name, port: port, tipo: type, controller_id: controller})
-  }
-
-  query.then(function (rows) {
-      callback(rows[0]);
-  })
-  .catch(function (err) {
-      console.log("Error: " + err.message);
-      return false;
-  });
-}
-
-/**
- * Actualiza la temperatura de un regulador
- * @param {*} device_id
- * @param {*} newValue
- * @param {*} callback
- */
-function updateDevice(device_id, newValue, callback) {
-    knex('dispositivos').where('id', device_id).update('temperatura', newValue)
-    .then(function (rows) {
-        callback(rows);
-    })
-    .catch(function (err) {
-        console.log("Error: " + err.message);
-        return false;
-    });
-}
-
-/**
- * Actualiza el estado de una conexion de luz
- * @param {*} device_id
- * @param {*} newValue
- * @param {*} callback
- */
-function updateLight(device_id, newValue, callback) {
-    knex('dispositivos').where('id', device_id).update('status', newValue)
-    .then(function (rows) {
-        callback(rows);
-    })
-    .catch(function (err) {
-        console.log("Error: " + err.message);
-        return false;
-    });
-}
-
-/**
- * Borra un dispositivo
- * @param {*} device_id
- * @param {*} callback
- */
-function deleteDevice(device_id, callback) {
-    knex('dispositivos').where('id', device_id).del()
-        .then(function (row) {
-            callback(row);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err.message);
-            return false;
-        })
-}
-
-/**
-  @param deviceId
-  @param action
- */
-function getProgramationType(deviceId, action, date, callback) {
-  actionSplit = action.split(" ")
-
-  getDevice(deviceId, function (device) {
-    switch (actionSplit[1]) {
-      case "light":
-        json = {
-          'action': 'programation',
-          'device': actionSplit[1],
-          'port': device.port,
-          'date': date,
-          'value': actionSplit[2] == 'ON' ? true : false,
-          'log': actionSplit[2] == 'ON' ? 'Dispositivo '+device.nombre+' activado' : 'Dispositivo '+device.nombre+' desactivado'
-        }
-        break;
-      case "clima":
-        console.log("Clima programation not implemented yet!")
-        json = JSON.stringify({
-          'action': 'programation',
-          'device': actionSplit[1],
-          'value': 'NOT_IMPLEMENTED'
-        })
-        break;
-      default:
-        console.log("Not implemented yet!")
-        json = JSON.stringify({
-          'action': 'programation',
-          'value': "NOT_IMPLEMENTED"
-        })
-    }
-
-    return callback(json)
-  })
-}
-
-/**
- * Inserts a programation into a device
- * @param {*} device_id
- * @param {*} controller_id
- * @param {*} date
- * @param {*} action
- * @param {*} callback
- * @param {*} ws
- */
-function insertProgramation(device_id, controller_id, date, action, callback) {
-  getProgramationType(device_id, action, date, function (newProgramation) {
-    // Cogemos la conexion establecida
-    var ws = connectedUsers.get(controller_id)
-
-    // Envio de nueva programacion
-    ws.send(JSON.stringify(newProgramation))
-
-    knex('programaciones').insert({fecha: date, action: action, controller_id: controller_id, dispositivo_id: device_id})
-        .returning('id')
-        .then(function (row) {
-            callback(true);
-        })
-        .catch(function (err) {
-            console.log("Error: " + err.message);
-            callback(false);
-        })
-  })
-}
-
-/**
-* Update a light through Websocket communication
-* @param device affected device
-* @param controllerId raspian controller
-* @param newStatus new value status
-*/
-function updateLightWS(device, controllerId, newStatus) {
-  console.log("Actualizando luz en Raspian...")
-
-  // Cogemos la conexion establecida
-  var ws = connectedUsers.get(controllerId)
-  var newLight = JSON.stringify({
-    'action': 'light',
-    'port': device.port,
-    'value': newStatus
-  })
-
-  // Enviamos nuevas instrucciones a raspian
-  ws.send(newLight)
-}
-
 // Enrutador
 var router = express.Router();
 
@@ -422,13 +112,13 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
     console.log("POST /api/casas/"+houseId+"/controller/"+controllerId+"/programacion");
 
         if (houseId > 0 && controllerId > 0) {
-            getHouse(houseId, function(house) {
+            db.getHouse(knex, houseId, function(house) {
                 if (!house) {
                     resp.status(404);
                     resp.send({errMessage: "No se ha encontrado el inmueble "+houseId});
 
                 } else {
-                    getController(controllerId, function(controller) {
+                    db.getController(knex, controllerId, function(controller) {
                         if (!controller) {
                             resp.status(404);
                             resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
@@ -440,7 +130,7 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
 
                             if(dispositivoId && fecha && action) {
                                 // Anyadimos programacion
-                                insertProgramation(dispositivoId, controllerId, fecha, action, function(response) {
+                                db.insertProgramation(knex, dispositivoId, controllerId, fecha, action, function(response) {
                                     if (response) {
                                         resp.status(200);
                                         resp.send({message: "Accion programada correctamente",
@@ -477,13 +167,13 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
     console.log("GET /api/casas/"+houseId+"/controller/"+controllerId);
 
     if (houseId > 0 && controllerId > 0) {
-        getHouse(houseId, function(house) {
+        db.getHouse(knex, houseId, function(house) {
             if (!house) {
                 resp.status(404);
                 resp.send({errMessage: "No se ha encontrado el elemento "+houseId});
 
             } else {
-                getController(controllerId, function(controller) {
+                db.getController(knex, controllerId, function(controller) {
                     if (!controller) {
                         resp.status(404);
                         resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
@@ -494,7 +184,7 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
                         var json_result = {};
 
                         // Offset empieza desde 0
-                        getDevices(controllerId, offset-1, function(devices) {
+                        db.getDevices(knex, controllerId, offset-1, function(devices) {
                             var result = [];
                             if (devices) {
 
@@ -541,13 +231,13 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
     console.log("POST /api/casas/"+houseId+"/controller/"+controllerId);
 
     if (houseId > 0 && controllerId > 0) {
-        getHouse(houseId, function(house) {
+        db.getHouse(knex, houseId, function(house) {
             if (!house) {
                 resp.status(404);
                 resp.send({errMessage: "No se ha encontrado el inmueble "+houseId});
 
             } else {
-                getController(controllerId, function(controller) {
+                db.getController(knex, controllerId, function(controller) {
                     if (!controller) {
                         resp.status(404);
                         resp.send({errMessage: "No se ha encontrado el controlador "+controllerId});
@@ -566,7 +256,7 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
                           resp.send({errMessage: "Debes especificar un tipo adecuado para el dispositivo. Los soportados son light y clima"});
 
                         } else {
-                            insertDevice(controllerId, nombre, port, type, function (response) {
+                            db.insertDevice(knex, controllerId, nombre, port, type, function (response) {
                                 if (response) {
                                   console.log(response);
                                     resp.status(201);
@@ -600,8 +290,8 @@ router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, fun
   console.log("PUT /api/casas/"+houseId+"/controller/"+controllerId+"/luz/"+deviceId);
 
   if (houseId > 0 && controllerId > 0 && deviceId > 0) {
-      getHouse(houseId, function(house) {
-          getController(controllerId, function(controller) {
+      db.getHouse(knex, houseId, function(house) {
+          db.getController(knex, controllerId, function(controller) {
               // Actualizamos el dispositivo
               if (house && controller) {
                   var newStatus = req.body.status;
@@ -612,13 +302,13 @@ router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, fun
                       resp.send({errMessage: "Debes especificar un estado válido para el dispositivo (true | false)"});
 
                   } else {
-                      getDevice(deviceId, function (response) {
+                      db.getDevice(knex, deviceId, function (response) {
 
                         // Actualiza luz en raspberry
-                        updateLightWS(response, controllerId, newStatus)
+                        helpers.updateLightWS(response, controllerId, newStatus, connectedUsers)
 
                         // Actualiza luz en BBDD
-                        updateLight(deviceId, newStatus, function(response) {
+                        db.updateLight(knex, deviceId, newStatus, function(response) {
                             console.log("repsonse "+ response);
                             if (response) {
                                 resp.status(200);
@@ -655,8 +345,8 @@ router.put('/casas/:id/controller/:controller_id/regulador/:device_id', checkAut
     console.log("PUT /api/casas/"+houseId+"/controller/"+controllerId+"/regulador/"+deviceId);
 
     if (houseId > 0 && controllerId > 0 && deviceId > 0) {
-        getHouse(houseId, function(house) {
-            getController(controllerId, function(controller) {
+        db.getHouse(knex, houseId, function(house) {
+            db.getController(knex, controllerId, function(controller) {
                 // Actualizamos el dispositivo
                 if (house && controller) {
                     var newTemperatura = req.body.temperatura;
@@ -668,7 +358,7 @@ router.put('/casas/:id/controller/:controller_id/regulador/:device_id', checkAut
 
                     } else {
                         // Actualiza temperatura
-                        updateDevice(deviceId, newTemperatura, function(response) {
+                        db.updateDevice(knex, deviceId, newTemperatura, function(response) {
                             console.log("repsonse "+ response);
                             if (response) {
                                 resp.status(200);
@@ -704,11 +394,11 @@ router.delete('/casas/:id/controller/:controller_id/regulador/:device_id', check
     console.log("DELETE /api/casas/"+houseId+"/controller/"+controllerId+"/regulador/"+deviceId);
 
     if (houseId > 0 && controllerId > 0 && deviceId > 0) {
-        getHouse(houseId, function(house) {
-            getController(controllerId, function(controller) {
+        db.getHouse(knex, houseId, function(house) {
+            db.getController(knex, controllerId, function(controller) {
                 // Actualizamos el dispositivo
                 if (house && controller) {
-                    deleteDevice(deviceId, function(response) {
+                    db.deleteDevice(knex, deviceId, function(response) {
 
                         if (response) {
                             resp.status(200);
@@ -738,15 +428,14 @@ router.get('/casas', checkAuth, function(req, resp) {
     // Verificamos el usuario
     console.log('GET /api/casas');
     console.log(username);
-    getCurrentUserId(username, function(res) {
+    return db.getCurrentUserId(knex, username, function(res) {
         if (!res) {
             resp.status(500);
             resp.send({errMessage: "No estas autenticado!", url: "http://localhost:8080/api/login"});
 
         } else {
             var userId = res.id;
-            knex('casas').select('id', 'nombre', 'poblacion', 'direccion', 'codigo_postal').where('user_id', userId)
-                .then(function(rows) {
+            db.getHouses(knex, userId, function(rows) {
                     if (rows) {
                         var result = [];
                         resp.status(200);
@@ -778,7 +467,7 @@ router.get('/casas/:id', function(req, resp) {
 
     // Comprueba si la ID es mayor que 0
     if (houseId > 0) {
-        getHouse(houseId, function(house) {
+        db.getHouse(knex, houseId, function(house) {
             if (!house) {
                 resp.status(404);
                 resp.send({errMessage: "No se ha encontrado el elemento "+houseId});
@@ -787,7 +476,7 @@ router.get('/casas/:id', function(req, resp) {
                 var result = [];
 
                 // Buscar controladores de la casa
-                getControllers(houseId, function(controllers) {
+                db.getControllers(knex, houseId, function(controllers) {
 
                     controllers.forEach(function(element) {
                         result.push({
@@ -822,7 +511,7 @@ router.post('/login', function(req, resp) {
     var loginName = req.body.login.toLowerCase();
     var password = req.body.password;
 
-    login(loginName, password, function(result) {
+    db.login(knex, loginName, password, function(result) {
         var token = result;
         if (token == false) {
             resp.status(500);
@@ -843,7 +532,7 @@ router.post('/register', function(req, resp) {
 
   // Check minimun register fields
   if (loginName.length > 4 && password.length > 4) {
-    register(loginName, password, function(result) {
+    db.register(knex, loginName, password, function(result) {
       if (!result) {
         // User ya existente
         resp.status(406);

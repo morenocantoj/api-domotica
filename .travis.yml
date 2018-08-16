@@ -1,11 +1,15 @@
 language: node_js
 node_js:
   - "7"
+env:
+    - NODE_ENV='test'
 services:
   - mysql
 before_install:
   - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
   - mysql -u root --password="" test < ./test/db.sql
+script:
+  - node_modules/mocha/bin/mocha --exit
 deploy:
   provider: heroku
   api_key: 87824981-5559-4c57-bf72-9d07c51df180
