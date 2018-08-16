@@ -291,8 +291,13 @@ return module.exports = {
         // Envio de nueva programacion
         ws.send(JSON.stringify(newProgramation))
 
-        knex('programaciones').insert({fecha: date, action: action, controller_id: controller_id, dispositivo_id: device_id})
-            .returning('id')
+        knex('programaciones').insert({
+          fecha: date,
+          action: action,
+          controller_id: controller_id,
+          dispositivo_id: device_id,
+          log: newProgramation.log
+        }).returning('id')
             .then(function (row) {
                 return callback(true);
             })
@@ -304,4 +309,23 @@ return module.exports = {
     })
   },
 
+  /**
+  * Get all programations pending from a controller
+  * @param knex BBDD helper
+  * @param controllerId controller ID
+  * @param minDate minimun date for searching of
+  * @param callback callback function
+  */
+  getProgramations: function(knex, controllerId, minDate, callback) {
+    console.log("GET PROGRAMATIONS")
+
+    knex('programaciones').where('controller_id', controllerId).where('fecha', '>=', minDate)
+    .then(function (rows) {
+      return callback(rows)
+    })
+    .catch(function (err) {
+      console.log(err)
+      return callback(false)
+    })
+  }
 }
