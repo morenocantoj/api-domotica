@@ -73,6 +73,11 @@ describe('Suite de pruebas de la API REST domotica', function() {
       .send({date: '16-04-1995 21:32'})
       .expect(200)
       .end(function(err, resp) {
+        if (err) {
+          console.log(err)
+          done()
+        }
+        console.log(resp.body)
         assert.equal(resp.body.programaciones.length, 1)
         done()
       })
