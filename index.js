@@ -222,6 +222,39 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
     }
 });
 
+router.get('/casas/:id/controller/:controller_id/eventos', function (req, resp) {
+  var controllerId = req.params.controller_id
+
+  if (controllerId > 0) {
+    // Get events
+    db.getEvents(knex, controllerId, function (rows) {
+      if (!rows) {
+        resp.status(500);
+        resp.send({errMessage: "¡Ha ocurrido un error en el servidor!"});
+
+      } else {
+        var result = [];
+        resp.status(200);
+        rows.forEach(function(element) {
+          result.push({
+            id: element.id,
+            fecha: element.fecha,
+            message: element.message,
+            controller_id: element.controller_id
+          });
+          }, this);
+          var json = {eventos: result};
+          resp.send(json);
+      }
+    })
+
+  } else {
+    resp.status(400);
+    resp.send({errMessage: "El id proporcionado no es válido"});
+  }
+})
+
+// Get pending programations
 router.get('/casas/:id/controller/:controller_id/programaciones', function (req, resp) {
   var controllerId = req.params.controller_id
   var date
@@ -441,10 +474,13 @@ router.delete('/casas/:id/controller/:controller_id/regulador/:device_id', check
                     db.deleteDevice(knex, deviceId, function(response) {
 
                         if (response) {
+                          // Emit the action
+                          let message = "Dispositivo " + deviceId + " eliminado del sistema"
+                          db.insertEvent(knex, controllerId, message, function(eventId) {
                             resp.status(200);
                             resp.send({message: "Dispositivo "+deviceId+" eliminado correctamente",
                                 url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
-
+                          })
                         } else {
                             resp.status(500);
                             resp.send({errMessage: "Ha ocurrido un problema eliminando el dispositivo"});
