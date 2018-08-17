@@ -108,4 +108,22 @@ describe('Suite de pruebas de la API REST domotica', function() {
       .get('/api/casas/1/controller/-1/eventos')
       .expect(400, done)
     })
+    it('POST /api/casas/1/controller/2 (añadir dispositivo)', function(done) {
+      supertest(app)
+      .post('/api/casas/1/controller/2')
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer '+token)
+      .send({nombre: "test", port: "21", type: "light"})
+      .expect(201, done)
+    })
+    it('GET /api/casas/1/controller/2/eventos equal to 1', function(done) {
+      supertest(app)
+      .get('/api/casas/1/controller/2/eventos')
+      .expect(200)
+      .end(function(err, result) {
+        chk(err, done)
+        assert.equal(result.body.eventos.length, 1)
+        done()
+      })
+    })
 });

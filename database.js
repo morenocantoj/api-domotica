@@ -212,7 +212,8 @@ return module.exports = {
     }
 
     query.then(function (rows) {
-        return callback(rows[0]);
+        callback(rows[0]);
+        return null;
     })
     .catch(function (err) {
         console.log("Error: " + err.message);

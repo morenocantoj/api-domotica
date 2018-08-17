@@ -132,9 +132,14 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
                                 // Anyadimos programacion
                                 db.insertProgramation(knex, dispositivoId, controllerId, fecha, action, function(response) {
                                     if (response) {
+                                      // Event emitter
+                                      let message = "Dispositivo " + deviceId + " programado"
+
+                                      db.insertEvent(knex, controllerId, message, function (eventId) {
                                         resp.status(200);
                                         resp.send({message: "Accion programada correctamente",
                                             url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+                                      })
 
                                     } else {
                                         resp.status(500);
@@ -331,10 +336,14 @@ router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, res
                         } else {
                             db.insertDevice(knex, controllerId, nombre, port, type, function (response) {
                                 if (response) {
-                                  console.log(response);
+                                  // Event emitter
+                                  let message = "Creado nuevo dispositivo: " + req.body.nombre
+
+                                  db.insertEvent(knex, controllerId, message, function (eventId) {
                                     resp.status(201);
                                     resp.send({message: "Dispositivo "+response+" creado correctamente",
                                         url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+                                  })
 
                                 } else {
                                     resp.status(500);
@@ -382,11 +391,17 @@ router.put('/casas/:id/controller/:controller_id/luz/:device_id', checkAuth, fun
 
                         // Actualiza luz en BBDD
                         db.updateLight(knex, deviceId, newStatus, function(response) {
-                            console.log("repsonse "+ response);
+
                             if (response) {
+                              // Event emitter
+                              let message
+                              newStatus ? message = "Dispositivo " + deviceId + " activado"
+                                        : message = "Dispositivo " + deviceId + " apagado"
+                              db.insertEvent(knex, controllerId, message, function (eventId) {
                                 resp.status(200);
                                 resp.send({status: newStatus,
                                     url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+                              })
 
                             } else {
                                 resp.status(500);
@@ -432,11 +447,15 @@ router.put('/casas/:id/controller/:controller_id/regulador/:device_id', checkAut
                     } else {
                         // Actualiza temperatura
                         db.updateDevice(knex, deviceId, newTemperatura, function(response) {
-                            console.log("repsonse "+ response);
                             if (response) {
+                              // Event emitter
+                              let message = "Dispositivo " + deviceId + " puesto a " + newTemperatura
+
+                              db.insertEvent(knex, controllerId, message, function (eventId) {
                                 resp.status(200);
                                 resp.send({nueva_temperatura: newTemperatura,
                                     url: 'http://'+req.headers.host+'/casa/'+houseId+'/controller/'+controllerId});
+                              })
 
                             } else {
                                 resp.status(500);
