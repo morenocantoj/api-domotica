@@ -222,6 +222,46 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
     }
 });
 
+router.get('/casas/:id/controller/:controller_id/programaciones', function (req, resp) {
+  var controllerId = req.params.controller_id
+  var date
+  if (!req.query.date) {
+    date = moment("YYYY-MM-DD HH:mm:ss")
+  } else {
+    date = moment(req.query.date, "DD-MM-YYYY HH:mm:ss").format("YYYY-MM-DD HH:mm:ss")
+  }
+
+  if (controllerId > 0) {
+    // Get programations
+    db.getProgramations(knex, controllerId, date, function (rows) {
+      if (!rows) {
+        resp.status(500);
+        resp.send({errMessage: "¡Ha ocurrido un error en el servidor!"});
+
+      } else {
+        var result = [];
+        resp.status(200);
+        rows.forEach(function(element) {
+          result.push({
+            id: element.id,
+            fecha: element.fecha,
+            action: element.action,
+            controller_id: element.controller_id,
+            dispositivo_id: element.dispositivo_id,
+            log: element.log
+          });
+          }, this);
+          var json = {programaciones: result};
+          resp.send(json);
+      }
+    })
+
+  } else {
+    resp.status(400);
+    resp.send({errMessage: "El id proporcionado no es válido"});
+  }
+})
+
 // Anyadir un dispositivo a un controlador
 router.post('/casas/:id/controller/:controller_id', checkAuth, function(req, resp) {
     // Cogemos el inmueble

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: localhost
--- Tiempo de generación: 06-08-2018 a las 17:43:43
+-- Tiempo de generación: 15-08-2018 a las 19:22:38
 -- Versión del servidor: 10.1.31-MariaDB
 -- Versión de PHP: 7.1.16
 
@@ -19,7 +19,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `test`
+-- Base de datos: `domotik`
 --
 
 -- --------------------------------------------------------
@@ -114,6 +114,13 @@ CREATE TABLE `programaciones` (
   `dispositivo_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
+--
+-- Volcado de datos para la tabla `programaciones`
+--
+
+INSERT INTO `programaciones` (`id`, `fecha`, `action`, `controller_id`, `dispositivo_id`) VALUES
+(1, '2999-04-16 14:15:00', 'PUT temperatura 25', 1, 5);
+
 -- --------------------------------------------------------
 
 --
@@ -131,9 +138,8 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `login`, `password`) VALUES
-(1, 'morenocantoj', '$2y$12$JqI9xd3fap51hUfYvzJRIu7pSDkI.nOyG1DVdTjEHDVKLN26q49y.'),
-(2, 'thelocoxs', '$2a$08$tNYYZB1D4k7.g8lbKwDCXOVWCfLA.P0EVjIL40QoYUNFaGcpByPpW'),
-(3, 'elfary', '$2a$08$iwbgRBnFR02nyibTp3TLtuNeYLB28JmFFUuJuQeJ7cQQKej1LdVyq');
+(1, 'morenocantoj', '$2a$08$nBvHah3PNghJ704qwPsAMOSYw6irNYF895Tcg5/VpuqVpB9TyUsd.'),
+(2, 'elfary', '$2a$08$0OCa8W78MgXJbH9NG2RjYOOlOJqqodkfVQmXiyUzzax4WHn/VFj7W');
 
 --
 -- Índices para tablas volcadas
@@ -194,13 +200,13 @@ ALTER TABLE `controladores`
 -- AUTO_INCREMENT de la tabla `dispositivos`
 --
 ALTER TABLE `dispositivos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de la tabla `programaciones`
 --
 ALTER TABLE `programaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`

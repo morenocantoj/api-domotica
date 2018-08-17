@@ -119,7 +119,7 @@ CREATE TABLE `programaciones` (
 --
 
 INSERT INTO `programaciones` (`id`, `fecha`, `action`, `controller_id`, `dispositivo_id`) VALUES
-(1, '0000-00-00 00:00:00', 'PUT temperatura 25', 1, 5);
+(1, '2999-04-16 14:15:00', 'PUT temperatura 25', 1, 5);
 
 -- --------------------------------------------------------
 
