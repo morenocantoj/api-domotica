@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test":
-      "/Applications/XAMPP/bin/mysql -u root --password='' -e 'DROP DATABASE IF EXISTS domotik;' && /Applications/XAMPP/bin/mysql -u root --password='' -e 'CREATE DATABASE IF NOT EXISTS domotik;' && /Applications/XAMPP/bin/mysql -u root --password='' domotik < ./domotik.sql && mocha --exit",
+      "/Applications/XAMPP/bin/mysql -u root --password='' -e 'DROP DATABASE IF EXISTS domotik;' && /Applications/XAMPP/bin/mysql -u root --password='' -e 'CREATE DATABASE IF NOT EXISTS domotik;' && /Applications/XAMPP/bin/mysql -u root --password='' domotik < ./domotik.sql && mocha --exit && /Applications/XAMPP/bin/mysql -u root --password='' domotik < ./domotik.sql",
     "start": "node index.js"
   },
   "author": "",

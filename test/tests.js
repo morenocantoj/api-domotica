@@ -4,6 +4,13 @@ var assert = require('assert');
 
 var token = "";
 
+function chk(err, done) {
+  if (err) {
+    console.log(err)
+    done()
+  }
+}
+
 describe('Suite de pruebas de la API REST domotica', function() {
     it('GET / OK', function(done) {
         supertest(app)
@@ -57,7 +64,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
         .set('Authorization', 'Bearer '+token)
         .expect(200, done)
     });
-    it('GET /api/casas/1/controller/7/programaciones', function() {
+    it('GET /api/casas/1/controller/7/programaciones equal to 0', function() {
       return supertest(app)
       .get('/api/casas/1/controller/2/programaciones?date=16-04-1995 21:32:00')
       .expect(200)
@@ -66,16 +73,56 @@ describe('Suite de pruebas de la API REST domotica', function() {
       })
 
     })
-    it('GET /api/casas/1/controller/1/programaciones equal to 0', function(done) {
+    it('GET /api/casas/1/controller/1/programaciones equal to 1', function(done) {
       supertest(app)
       .get('/api/casas/1/controller/1/programaciones?date=16-04-1995 21:32:00')
       .expect(200)
       .end(function(err, resp) {
-        if (err) {
-          console.log(err)
-          done()
-        }
+        chk(err, done)
         assert.equal(resp.body.programaciones.length, 1)
+        done()
+      })
+    })
+    it('GET /api/casas/1/controller/3/eventos equal to 0', function(done) {
+      supertest(app)
+      .get('/api/casas/1/controller/3/eventos')
+      .expect(200)
+      .end(function(err, result) {
+        chk(err, done)
+        assert.equal(result.body.eventos.length, 0)
+        done()
+      })
+    })
+    it('GET /api/casas/1/controller/1/eventos equal to 1', function(done) {
+      supertest(app)
+      .get('/api/casas/1/controller/1/eventos')
+      .expect(200)
+      .end(function(err, result) {
+        chk(err, done)
+        assert.equal(result.body.eventos.length, 1)
+        done()
+      })
+    })
+    it('GET /api/casas/1/controller/-1/eventos FAIL', function(done) {
+      supertest(app)
+      .get('/api/casas/1/controller/-1/eventos')
+      .expect(400, done)
+    })
+    it('POST /api/casas/1/controller/2 (añadir dispositivo)', function(done) {
+      supertest(app)
+      .post('/api/casas/1/controller/2')
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer '+token)
+      .send({nombre: "test", port: "21", type: "light"})
+      .expect(201, done)
+    })
+    it('GET /api/casas/1/controller/2/eventos equal to 1', function(done) {
+      supertest(app)
+      .get('/api/casas/1/controller/2/eventos')
+      .expect(200)
+      .end(function(err, result) {
+        chk(err, done)
+        assert.equal(result.body.eventos.length, 1)
         done()
       })
     })

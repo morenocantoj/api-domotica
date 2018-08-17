@@ -212,7 +212,8 @@ return module.exports = {
     }
 
     query.then(function (rows) {
-        return callback(rows[0]);
+        callback(rows[0]);
+        return null;
     })
     .catch(function (err) {
         console.log("Error: " + err.message);
@@ -262,7 +263,8 @@ return module.exports = {
   deleteDevice: function(knex, device_id, callback) {
       knex('dispositivos').where('id', device_id).del()
           .then(function (row) {
-              return callback(row);
+              callback(row);
+              return null;
           })
           .catch(function (err) {
               console.log("Error: " + err.message);
@@ -318,8 +320,50 @@ return module.exports = {
   */
   getProgramations: function(knex, controllerId, minDate, callback) {
     console.log("GET PROGRAMATIONS")
-    
+
     knex('programaciones').where('controller_id', controllerId).where('fecha', '>=', minDate)
+    .then(function (rows) {
+      return callback(rows)
+    })
+    .catch(function (err) {
+      console.log(err)
+      return callback(false)
+    })
+  },
+
+  /**
+  * Inserts an event happened in system
+  * @param knex
+  * @param controllerId ID of the controller where happened the event
+  * @param message What it happened
+  */
+  insertEvent: function(knex, controllerId, message, callback) {
+    var date = moment().format('YYYY-MM-DD HH:mm')
+
+    knex('eventos').insert({
+      log: message,
+      fecha: date,
+      controller_id: controllerId
+    }).returning('id')
+    .then(function (id) {
+      return callback(true)
+    })
+    .catch(function (err) {
+      console.log("Error " + err)
+      return callback(false)
+    })
+  },
+
+  /**
+  * Get all events from a controller
+  * @param knex BBDD helper
+  * @param controllerId controller ID
+  * @param callback callback function
+  */
+  getEvents: function(knex, controllerId, callback) {
+    console.log("GET EVENTS")
+
+    knex('eventos').where('controller_id', controllerId)
     .then(function (rows) {
       return callback(rows)
     })
