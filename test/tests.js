@@ -59,8 +59,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
     });
     it('GET /api/casas/1/controller/7/programaciones', function() {
       return supertest(app)
-      .get('/api/casas/1/controller/7/programaciones')
-      .send({date: '16-04-1995 21:32'})
+      .get('/api/casas/1/controller/2/programaciones?date=16-04-1995 21:32:00')
       .expect(200)
       .expect(function(result) {
         assert.equal(result.body.programaciones.length, 0)
@@ -69,15 +68,13 @@ describe('Suite de pruebas de la API REST domotica', function() {
     })
     it('GET /api/casas/1/controller/1/programaciones equal to 0', function(done) {
       supertest(app)
-      .get('/api/casas/1/controller/1/programaciones')
-      .send({date: '16-04-1995 21:32'})
+      .get('/api/casas/1/controller/1/programaciones?date=16-04-1995 21:32:00')
       .expect(200)
       .end(function(err, resp) {
         if (err) {
           console.log(err)
           done()
         }
-        console.log(resp.body)
         assert.equal(resp.body.programaciones.length, 1)
         done()
       })

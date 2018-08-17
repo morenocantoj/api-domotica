@@ -224,9 +224,12 @@ router.get('/casas/:id/controller/:controller_id', function(req, resp) {
 
 router.get('/casas/:id/controller/:controller_id/programaciones', function (req, resp) {
   var controllerId = req.params.controller_id
-  var date = req.body.date
-    ? moment(req.body.date, 'DD-MM-YYYY HH:MM').format('YYYY-MM-DD HH:mm:ss')
-    : moment().format('YYYY-MM-DD HH:mm:ss')
+  var date
+  if (!req.query.date) {
+    date = moment("YYYY-MM-DD HH:mm:ss")
+  } else {
+    date = moment(req.query.date, "DD-MM-YYYY HH:mm:ss").format("YYYY-MM-DD HH:mm:ss")
+  }
 
   if (controllerId > 0) {
     // Get programations

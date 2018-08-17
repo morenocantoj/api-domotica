@@ -318,7 +318,7 @@ return module.exports = {
   */
   getProgramations: function(knex, controllerId, minDate, callback) {
     console.log("GET PROGRAMATIONS")
-
+    
     knex('programaciones').where('controller_id', controllerId).where('fecha', '>=', minDate)
     .then(function (rows) {
       return callback(rows)
