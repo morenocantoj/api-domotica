@@ -653,6 +653,8 @@ router.post('/register', function(req, resp) {
 
 module.exports = app;
 
+console.log("¡Esto es una rama de prueba!")
+
 // Arranque del servidor
 var server = app.listen(process.env.PORT || port);
 const wss = new SocketServer({ server });
