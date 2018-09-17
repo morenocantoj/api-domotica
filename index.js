@@ -130,10 +130,10 @@ router.post('/casas/:id/controller/:controller_id/programacion', function(req, r
 
                             if(dispositivoId && fecha && action) {
                                 // Anyadimos programacion
-                                db.insertProgramation(knex, dispositivoId, controllerId, fecha, action, function(response) {
+                                db.insertProgramation(knex, dispositivoId, controllerId, fecha, action, connectedUsers, function(response) {
                                     if (response) {
                                       // Event emitter
-                                      let message = "Dispositivo " + deviceId + " programado"
+                                      let message = "Dispositivo " + dispositivoId + " programado"
 
                                       db.insertEvent(knex, controllerId, message, function (eventId) {
                                         resp.status(200);

@@ -298,13 +298,13 @@ return module.exports = {
           action: action,
           controller_id: controller_id,
           dispositivo_id: device_id,
-          log: newProgramation.log
+          //log: newProgramation.log
         }).returning('id')
             .then(function (row) {
                 return callback(true);
             })
             .catch(function (err) {
-                console.log("Error: " + err.message);
+                console.log("Error: " + err);
                 return callback(false);
             })
       })
