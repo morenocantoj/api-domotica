@@ -59,4 +59,12 @@ module.exports = {
     ws.send(newLight)
   },
 
+  /**
+  * Get current url with protocol and port
+  * @param req current request
+  */
+  getFullUrl: function(req) {
+    var fullUrl = req.protocol + '://' + req.get('host');
+    return fullUrl
+  },
 }

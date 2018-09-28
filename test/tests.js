@@ -18,6 +18,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
         .expect(200, done)
     });
     it('POST /api/login OK', function(done) {
+        console.log("-- LOGIN TESTS --")
         supertest(app)
         .post('/api/login')
         .send({login: "morenocantoj", password: "tutuha50"})
@@ -36,6 +37,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
         .expect(500, done)
     })
     it('GET /api/casas', function(done) {
+        console.log("-- HOUSE TESTS --")
         supertest(app)
         .get('/api/casas')
         .set('Authorization', 'Bearer '+token)
@@ -50,6 +52,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
         .expect(200, done)
     });
     it ('GET /api/casas/1/controller/1', function(done) {
+        console.log("-- CONTROLLER TESTS --")
         supertest(app)
         .get('/api/casas/1/controller/1?offset=1')
         .set('Content-Type', 'application/json')
@@ -65,6 +68,7 @@ describe('Suite de pruebas de la API REST domotica', function() {
         .expect(200, done)
     });
     it('GET /api/casas/1/controller/7/programaciones equal to 0', function() {
+      console.log("-- EVENTS AND PROGRAMATIONS TESTS --")
       return supertest(app)
       .get('/api/casas/1/controller/2/programaciones?date=16-04-1995 21:32:00')
       .expect(200)
@@ -125,5 +129,32 @@ describe('Suite de pruebas de la API REST domotica', function() {
         assert.equal(result.body.eventos.length, 1)
         done()
       })
+    })
+    it('GET /api/profile/1 OK', function(done) {
+      console.log("-- PROFILE TESTS --")
+      supertest(app)
+      .get('/api/profile/1')
+      .expect(200)
+      .end(function(err, result) {
+        chk(err, done)
+        assert.equal(result.body.username, 'morenocantoj')
+        done()
+      })
+    })
+    it('GET /api/profile/2 not equal to user 1', function(done) {
+      supertest(app)
+      .get('/api/profile/2')
+      .expect(200)
+      .end(function(err, result) {
+        chk(err, done)
+        assert(result.body.username != 'morenocantoj')
+        done()
+      })
+    })
+    it('GET /api/profile/0 EXPECT 400', function(done) {
+      console.log("-- PROFILE TESTS --")
+      supertest(app)
+      .get('/api/profile/0')
+      .expect(400, done)
     })
 });

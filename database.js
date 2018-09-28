@@ -70,6 +70,24 @@ return module.exports = {
   },
 
   /**
+  * Gets an user details
+  * @param userId existing user ID in database
+  */
+  getUser: function(knex, userId, callback) {
+    knex('usuarios').where({id: userId}).select('login').first()
+    .then(function (row) {
+      callback(row)
+      return null
+    })
+    .catch(function (err) {
+      console.log("Error obteniendo datos del usuario " + userId)
+      console.log(err)
+      callback(null)
+      return null
+    })
+  },
+
+  /**
    * Consigue el ID del usuario actual comprobando el token
    * @param {*} token token pasado por parametro
    * @param {*} callback function callback

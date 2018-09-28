@@ -621,6 +621,7 @@ router.post('/login', function(req, resp) {
     });
 })
 
+// Registry
 router.post('/register', function(req, resp) {
   var loginName = req.body.login.toLowerCase();
   var password = req.body.password;
@@ -646,6 +647,34 @@ router.post('/register', function(req, resp) {
   } else {
     resp.status(400);
     resp.send({errMessage: "El nombre de usuario y contraseña deben tener una longitud superior a 4 caracteres"});
+  }
+})
+
+// User details
+router.get('/profile/:id', function(req, resp) {
+  let userId = req.params.id;
+
+  if (userId > 0) {
+    // Get user details
+    db.getUser(knex, userId, function (user) {
+      // Manage user
+      if (user == null) {
+        // 500 server error (BBDD)
+        resp.status(500)
+        resp.send({errMessage: "Error interno de servidor al intentar recolectar datos de la base de datos"})
+
+      } else {
+        resp.status(200);
+        resp.send({
+          username: user.login,
+          modificar_perfil: helpers.getFullUrl(req) + "/profile/" + userId + "/modify"
+        })
+      }
+    })
+
+  } else {
+    resp.status(400)
+    resp.send({errMessage: "El ID de usuario debe ser mayor de 0"})
   }
 })
 
