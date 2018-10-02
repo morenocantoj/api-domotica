@@ -5,6 +5,11 @@ env:
     - NODE_ENV='test'
 services:
   - mysql
+cache:
+  directories:
+    - "node_modules"
+install:
+  - npm install
 before_install:
   - mysql -e 'CREATE DATABASE IF NOT EXISTS test;'
   - mysql -u root --password="" test < ./test/db.sql

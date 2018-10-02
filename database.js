@@ -37,6 +37,64 @@ return module.exports = {
   },
 
   /**
+  * Check if the old password match with existing
+  * @param userId passwords user
+  * @param oldPassword password to check
+  * @param callback function callback
+  */
+  checkOldPassword: function(knex, userId, oldPassword, callback) {
+    knex('usuarios').where({id: userId}).select('password').first()
+        .then(function (row) {
+          if (row.length <= 0) {
+            callback(false)
+            return null
+
+          } else {
+            // Check if password matches
+            if (bcrypt.compareSync(oldPassword, row.password)) {
+              callback(true)
+              return null
+
+            } else {
+              callback(false)
+              return null
+            }
+          }
+        })
+        .catch(function(err) {
+          console.log("Error obteniendo datos del usuario " + userId)
+          console.log(err)
+          callback(null)
+          return null
+        })
+  },
+
+  /**
+  * Changes an user login and password
+  * @param userId user to change values
+  * @param newLoginName new login value
+  * @param newPassword new password value
+  * @param callback function callback
+  */
+  changeUserValues: function(knex, userId, newLoginName, newPassword, callback) {
+    // Apply bcrypt on new passowrd
+    passwordHash = bcrypt.hashSync(newPassword, 8);
+
+    // Update values
+    knex('usuarios').where('id', userId).update('login', newLoginName).update('password', passwordHash)
+    .then(function () {
+      callback(true)
+      return null
+    })
+    .catch(function (err) {
+      console.log("Error actualizando datos del usuario " + userId)
+      console.log(err)
+      callback(false)
+      return null
+    })
+  },
+
+  /**
   * Registro de un nuevo usuario
   * @param login nombre de usuario
   * @param password contraseña a hashear
@@ -66,6 +124,24 @@ return module.exports = {
         // User existente
         return callback(false)
       }
+    })
+  },
+
+  /**
+  * Gets an user details
+  * @param userId existing user ID in database
+  */
+  getUser: function(knex, userId, callback) {
+    knex('usuarios').where({id: userId}).select('login').first()
+    .then(function (row) {
+      callback(row)
+      return null
+    })
+    .catch(function (err) {
+      console.log("Error obteniendo datos del usuario " + userId)
+      console.log(err)
+      callback(null)
+      return null
     })
   },
 

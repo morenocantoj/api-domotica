@@ -84,8 +84,8 @@ function checkAuth(req, resp, next) {
                 url: "http://localhost:8080/api/login"});
         }
     } else {
-        res.status(403);
-        res.send({errMessage: "Necesitas un token para poder realizar esta peticion"});
+        resp.status(403);
+        resp.send({errMessage: "Necesitas un token para poder realizar esta peticion"});
     }
 }
 
@@ -621,6 +621,7 @@ router.post('/login', function(req, resp) {
     });
 })
 
+// Registry
 router.post('/register', function(req, resp) {
   var loginName = req.body.login.toLowerCase();
   var password = req.body.password;
@@ -646,6 +647,86 @@ router.post('/register', function(req, resp) {
   } else {
     resp.status(400);
     resp.send({errMessage: "El nombre de usuario y contraseña deben tener una longitud superior a 4 caracteres"});
+  }
+})
+
+// User details
+router.get('/profile/:id', function(req, resp) {
+  let userId = req.params.id
+
+  if (userId > 0) {
+    // Get user details
+    db.getUser(knex, userId, function (user) {
+      // Manage user
+      if (user == null) {
+        // 500 server error (BBDD)
+        resp.status(500)
+        resp.send({errMessage: "Error interno de servidor al intentar recolectar datos de la base de datos"})
+
+      } else {
+        resp.status(200);
+        resp.send({
+          username: user.login,
+          modificar_perfil: helpers.getFullUrl(req) + "/profile/" + userId + "/modify"
+        })
+      }
+    })
+
+  } else {
+    resp.status(400)
+    resp.send({errMessage: "El ID de usuario debe ser mayor de 0"})
+  }
+})
+
+// Change user details
+router.put('/profile/:id', checkAuth, function(req, resp) {
+  let userId = req.params.id;
+  var newLoginName = req.body.new_login.toLowerCase()
+  var newPassword = req.body.new_password
+  var oldPassword = req.body.password
+
+  if (userId > 0) {
+    // Check old password matches with existing one
+    db.checkOldPassword(knex, userId, oldPassword, function (checked) {
+      if (checked) {
+        // Check minimun login fields
+        if (newLoginName.length > 4 && newPassword.length > 4) {
+          // Change user values
+          db.changeUserValues(knex, userId, newLoginName, newPassword, function(changed) {
+            if (changed) {
+              resp.status(200)
+              resp.send({
+                message: "Datos actualizados correctamente",
+                login_url: helpers.getFullUrl(req) + "/login"
+              })
+
+            } else {
+              // 500 server error (BBDD)
+              resp.status(500)
+              resp.send({errMessage: "Error interno de servidor al intentar actualizar datos de la base de datos"})
+            }
+          })
+
+        } else {
+          // Lenght err
+          resp.status(400);
+          resp.send({errMessage: "El nombre de usuario y contraseña deben tener una longitud superior a 4 caracteres"});
+        }
+
+      } else if (!checked) {
+        // Password mismatch
+        resp.status(401)
+        resp.send({errMessage: "La contraseña introducida y la existente no coinciden"})
+
+      } else if (checked == null) {
+        // 500 server error (BBDD)
+        resp.status(500)
+        resp.send({errMessage: "Error interno de servidor al intentar recolectar datos de la base de datos"})
+      }
+    })
+  } else {
+    resp.status(400)
+    resp.send({errMessage: "El ID de usuario debe ser mayor de 0"})
   }
 })
 
